@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="45"
+                android:startColor="#F7FBFF"
+                android:centerColor="#F3ECFF"
+                android:endColor="#FFF0F5" />
+        </shape>
+    </item>
+
+    <item
+        android:drawable="@drawable/mmwelconn_splash_logo"
+        android:gravity="center" />
+</layer-list>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "631638418718",
+    "project_id": "mm-welconn",
+    "storage_bucket": "mm-welconn.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:631638418718:android:05416beb488e53fba3950f",
+        "android_client_info": {
+          "package_name": "com.mm.welconn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7Ph4XHnLGQ06vWwOhDlo0KZXD1xsERZk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

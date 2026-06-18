@@ -1,0 +1,6 @@
+storeFile=mmwelconn_keystore.jks
+storePassword=CHANGE_ME
+keyAlias=mmwelconn_key
+keyPassword=CHANGE_ME
+
+# Copy this file to key.properties and replace the CHANGE_ME values with your own.
