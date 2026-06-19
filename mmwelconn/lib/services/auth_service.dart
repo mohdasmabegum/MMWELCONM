@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -65,5 +66,84 @@ class AuthService {
   // Check if user is logged in
   Stream<User?> authStateChanges() {
     return _auth.authStateChanges();
+  }
+
+  // Phone authentication for MFA
+  Future<String?> sendPhoneVerificationCode(String phoneNumber) async {
+    try {
+      final Completer<String?> completer = Completer<String?>();
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Auto-retrieved; for testing only
+          completer.complete(credential.smsCode);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          print('Phone verification failed: ${e.message}');
+          completer.complete(null);
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          completer.complete(verificationId);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          // Auto-retrieval timed out
+        },
+      );
+      return await completer.future;
+    } catch (e) {
+      print('Error sending phone verification: $e');
+      return null;
+    }
+  }
+
+  // Verify phone code and link to account
+  Future<User?> verifyAndLinkPhone(String verificationId, String smsCode) async {
+    try {
+      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+      final user = _auth.currentUser;
+      if (user != null) {
+        await user.phoneLink(credential);
+        // Update user document with phone
+        await _firestore.collection('users').doc(user.uid).update({
+          'phoneNumber': user.phoneNumber,
+          'mfaEnabled': true,
+        });
+        return user;
+      }
+      return null;
+    } on FirebaseAuthException catch (e) {
+      print('Phone verification error: ${e.message}');
+      return null;
+    }
+  }
+
+  // Check if MFA is enabled for current user
+  Future<bool> isMfaEnabled() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return false;
+      final idTokenResult = await user.getIdTokenResult();
+      return idTokenResult.claims['mobile_otp'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Sign in with phone OTP (standalone for MFA flows)
+  Future<User?> signInWithPhone(String verificationId, String smsCode) async {
+    try {
+      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: smsCode,
+      );
+      final result = await _auth.signInWithCredential(credential);
+      return result.user;
+    } on FirebaseAuthException catch (e) {
+      print('Phone sign-in error: ${e.message}');
+      return null;
+    }
   }
 }
