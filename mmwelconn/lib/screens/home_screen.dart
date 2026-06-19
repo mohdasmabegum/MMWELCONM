@@ -24,22 +24,35 @@ class _HomeScreenState extends State<HomeScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final bool desktop = constraints.maxWidth > 900;
-              return SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: desktop ? 56 : 20,
-                    vertical: 24,
-                  ),
-                  child: Column(
-                    children: [
-                      _TopHero(user: user),
-                      const SizedBox(height: 26),
-                      _StatsRow(user: user),
-                      const SizedBox(height: 26),
-                      _QuickActions(authService: _authService, userName: user?.email?.split('@').first ?? 'User'),
-                      const SizedBox(height: 26),
-                      _FuturisticPanel(),
-                    ],
+              // Vertically center the main content on the screen (while still scrollable).
+              return Center(
+                child: SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      // Reserve space for bottom nav so centering doesn't overlap it.
+                      minHeight: constraints.maxHeight - 140,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: desktop ? 56 : 20,
+                        vertical: 24,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _TopHero(user: user),
+                          const SizedBox(height: 26),
+                          _StatsRow(user: user),
+                          const SizedBox(height: 26),
+                          _QuickActions(
+                            authService: _authService,
+                            userName: user?.email?.split('@').first ?? 'User',
+                          ),
+                          const SizedBox(height: 26),
+                          _FuturisticPanel(),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               );
