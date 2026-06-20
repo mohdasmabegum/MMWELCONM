@@ -30,7 +30,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> with SingleTicker
     )..forward();
 
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
+    _slide = Tween<Offset>(begin: const Offset(0, 0.10), end: Offset.zero)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _scale = Tween<double>(begin: 0.94, end: 1).animate(
       CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
@@ -50,11 +50,11 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> with SingleTicker
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final bool desktop = constraints.maxWidth > 900;
+              final double width = constraints.maxWidth;
               return SingleChildScrollView(
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: desktop ? 56 : 20,
+                    horizontal: width *0.06,
                     vertical: 18,
                   ),
                   child: Column(

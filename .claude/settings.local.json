@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/mdasm/AppData/Local/Android/flutter/**)",
+      "Read(//m/DREAM/Git Files/MMWELCONN/$HOME/flutter/**)",
+      "Read(//m/flutter/**)",
+      "Bash(m:/flutter/bin/flutter build web --release -d chrome)",
+      "Bash(echo $PATH)",
+      "Bash(cmd /c \"cd m:\\\\DREAM\\\\Git\\\\Files\\\\MMWELCONN\\\\mmwelconn && flutter build web --release\")",
+      "Bash(cmd /c \"flutter --version 2>&1\")",
+      "Bash(bash -c \"which flutter || echo NOT FOUND\")",
+      "Bash(bash -c \"ls -la /c/Users/mdasm/AppData/Local/Android/flutter/bin/flutter 2>/dev/null || ls -la /c/flutter/bin/flutter 2>/dev/null || ls -la ~/flutter/bin/flutter 2>/dev/null\")",
+      "Bash(/c/flutter/bin/flutter build web --release -d chrome)",
+      "Bash(bash -c \"cd ''m:/DREAM/Git Files/MMWELCONN/mmwelconn'' && /c/flutter/bin/flutter build web --release\")",
+      "Bash(bash -c \"/c/flutter/bin/flutter --version\")"
+    ]
+  }
+}

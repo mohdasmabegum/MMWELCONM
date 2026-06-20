@@ -105,7 +105,7 @@ class AuthService {
       );
       final user = _auth.currentUser;
       if (user != null) {
-        await user.phoneLink(credential);
+        await user.linkWithCredential(credential);
         // Update user document with phone
         await _firestore.collection('users').doc(user.uid).update({
           'phoneNumber': user.phoneNumber,
@@ -126,7 +126,8 @@ class AuthService {
       final user = _auth.currentUser;
       if (user == null) return false;
       final idTokenResult = await user.getIdTokenResult();
-      return idTokenResult.claims['mobile_otp'] == true;
+      final claims = idTokenResult.claims;
+      return claims != null && claims['mobile_otp'] == true;
     } catch (e) {
       return false;
     }
