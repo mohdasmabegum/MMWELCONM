@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mmwelconn/firebase_options.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/screens/auth_landing_screen.dart';
@@ -65,37 +66,58 @@ class _SplashFlowState extends State<SplashFlow> {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
-  static bool suppressAuthRedirect = false;
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _isLoggedIn = false;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (!mounted) return;
+      final loggedIn = user != null;
+      if (loggedIn && !_isLoggedIn) {
+        // Delay navigation so any popup on the stack can finish first
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) setState(() => _isLoggedIn = true);
+        });
+      } else if (!loggedIn && _isLoggedIn) {
+        setState(() => _isLoggedIn = false);
+      } else if (!_ready) {
+        setState(() {
+          _isLoggedIn = loggedIn;
+          _ready = true;
+        });
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final AuthService authService = AuthService();
+    if (!_ready) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      );
+    }
 
-    return StreamBuilder(
-      stream: authService.authStateChanges(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          );
-        }
+    if (_isLoggedIn) {
+      return const HomeScreen();
+    }
 
-        if (snapshot.hasData && !suppressAuthRedirect) {
-          return const HomeScreen();
-        }
-
-        return AuthLandingScreen(
-          onLoginTap: () => Navigator.of(context).pushNamed('/login'),
-          onRegisterTap: () => Navigator.of(context).pushNamed('/register'),
-        );
-      },
+    return AuthLandingScreen(
+      onLoginTap: () => Navigator.of(context).pushNamed('/login'),
+      onRegisterTap: () => Navigator.of(context).pushNamed('/register'),
     );
   }
 }

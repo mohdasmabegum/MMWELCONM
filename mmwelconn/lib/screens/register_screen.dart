@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:mmwelconn/main.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
@@ -127,14 +126,12 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
         const SnackBar(content: Text('Registration failed. Try again.')),
       );
     } else {
-      AuthGate.suppressAuthRedirect = true;
       await showAuthSuccess(
         context,
         title: 'Account Created!',
         subtitle: 'Welcome to MMWELCONN 🎉',
         colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
       );
-      AuthGate.suppressAuthRedirect = false;
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     }
