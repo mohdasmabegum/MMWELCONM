@@ -68,6 +68,8 @@ class _SplashFlowState extends State<SplashFlow> {
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
+  static bool suppressAuthRedirect = false;
+
   @override
   Widget build(BuildContext context) {
     final AuthService authService = AuthService();
@@ -85,7 +87,7 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        if (snapshot.hasData) {
+        if (snapshot.hasData && !suppressAuthRedirect) {
           return const HomeScreen();
         }
 

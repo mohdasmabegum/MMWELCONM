@@ -106,30 +106,25 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
 
     setState(() => _loading = true);
-    try {
-      final user = await _authService.login(
-        _emailController.text.trim(),
-        _passwordController.text,
+    final user = await _authService.login(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Login failed. Check your details.')),
+      );
+    } else {
+      await showAuthSuccess(
+        context,
+        title: 'Welcome back!',
+        subtitle: 'You are now logged in.',
+        colors: const [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
       );
       if (!mounted) return;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login failed. Check your details.')),
-        );
-      } else {
-        await showAuthSuccess(
-          context,
-          title: 'Welcome back!',
-          subtitle: 'You are now logged in.',
-          colors: const [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
-        );
-        if (!mounted) return;
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 

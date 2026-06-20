@@ -326,21 +326,11 @@ class FeaturePill extends StatelessWidget {
 }
 
 Future<void> showAuthSuccess(BuildContext context, {required String title, required String subtitle, required List<Color> colors}) async {
-  await showGeneralDialog(
+  await showDialog(
     context: context,
     barrierDismissible: false,
     barrierColor: Colors.black.withValues(alpha: 0.45),
-    transitionDuration: const Duration(milliseconds: 400),
-    transitionBuilder: (_, anim, __, child) => FadeTransition(
-      opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-      child: ScaleTransition(
-        scale: Tween<double>(begin: 0.78, end: 1.0).animate(
-          CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-        ),
-        child: child,
-      ),
-    ),
-    pageBuilder: (_, __, ___) => _AuthSuccessDialog(title: title, subtitle: subtitle, colors: colors),
+    builder: (_) => _AuthSuccessDialog(title: title, subtitle: subtitle, colors: colors),
   );
 }
 

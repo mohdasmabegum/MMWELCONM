@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mmwelconn/main.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
@@ -114,31 +115,28 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
     }
 
     setState(() => _loading = true);
-    try {
-      final user = await _authService.signUp(
-        _emailController.text.trim(),
-        _passwordController.text,
-        _nameController.text.trim(),
+    final user = await _authService.signUp(
+      _emailController.text.trim(),
+      _passwordController.text,
+      _nameController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Registration failed. Try again.')),
       );
+    } else {
+      AuthGate.suppressAuthRedirect = true;
+      await showAuthSuccess(
+        context,
+        title: 'Account Created!',
+        subtitle: 'Welcome to MMWELCONN 🎉',
+        colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
+      );
+      AuthGate.suppressAuthRedirect = false;
       if (!mounted) return;
-      if (user == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration failed. Try again.')),
-        );
-      } else {
-        await showAuthSuccess(
-          context,
-          title: 'Account Created!',
-          subtitle: 'Welcome to MMWELCONN 🎉',
-          colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
-        );
-        if (!mounted) return;
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 
