@@ -126,14 +126,16 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
         const SnackBar(content: Text('Registration failed. Try again.')),
       );
     } else {
-      await showAuthSuccess(
-        context,
-        title: 'Account Created!',
-        subtitle: 'Welcome to MMWELCONN 🎉',
-        colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
-      );
+      // Sign out so AuthGate doesn't auto-redirect to home
+      await _authService.logout();
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      await showAccountCreatedDialog(
+        context,
+        onGoToLogin: () {
+          Navigator.of(context).pop(); // close dialog
+          Navigator.of(context).pushReplacement(buildPageRoute(const LoginScreen()));
+        },
+      );
     }
   }
 

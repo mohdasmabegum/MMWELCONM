@@ -330,22 +330,89 @@ Future<void> showAuthSuccess(BuildContext context, {required String title, requi
     context: context,
     barrierDismissible: false,
     barrierColor: Colors.black.withValues(alpha: 0.45),
-    builder: (_) => _AuthSuccessDialog(title: title, subtitle: subtitle, colors: colors),
+    builder: (ctx) => _SimpleSuccessDialog(title: title, subtitle: subtitle, colors: colors),
   );
 }
 
-class _AuthSuccessDialog extends StatefulWidget {
+class _SimpleSuccessDialog extends StatefulWidget {
   final String title;
   final String subtitle;
   final List<Color> colors;
-
-  const _AuthSuccessDialog({required this.title, required this.subtitle, required this.colors});
-
+  const _SimpleSuccessDialog({required this.title, required this.subtitle, required this.colors});
   @override
-  State<_AuthSuccessDialog> createState() => _AuthSuccessDialogState();
+  State<_SimpleSuccessDialog> createState() => _SimpleSuccessDialogState();
 }
 
-class _AuthSuccessDialogState extends State<_AuthSuccessDialog> with SingleTickerProviderStateMixin {
+class _SimpleSuccessDialogState extends State<_SimpleSuccessDialog> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..forward();
+    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
+    Future.delayed(const Duration(milliseconds: 1800), () { if (mounted) Navigator.of(context).pop(); });
+  }
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 300,
+          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 28),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [BoxShadow(color: widget.colors.first.withValues(alpha: 0.22), blurRadius: 40, offset: const Offset(0, 16))],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ScaleTransition(
+                scale: _scale,
+                child: Container(
+                  width: 80, height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: widget.colors),
+                    boxShadow: [BoxShadow(color: widget.colors.first.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 8))],
+                  ),
+                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 44),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(widget.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.ink)),
+              const SizedBox(height: 8),
+              Text(widget.subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55), fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+Future<void> showAccountCreatedDialog(BuildContext context, {required VoidCallback onGoToLogin}) async {
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.45),
+    builder: (_) => _AccountCreatedDialog(onGoToLogin: onGoToLogin),
+  );
+}
+
+class _AccountCreatedDialog extends StatefulWidget {
+  final VoidCallback onGoToLogin;
+  const _AccountCreatedDialog({required this.onGoToLogin});
+
+  @override
+  State<_AccountCreatedDialog> createState() => _AccountCreatedDialogState();
+}
+
+class _AccountCreatedDialogState extends State<_AccountCreatedDialog> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _checkScale;
 
@@ -354,9 +421,6 @@ class _AuthSuccessDialogState extends State<_AuthSuccessDialog> with SingleTicke
     super.initState();
     _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..forward();
     _checkScale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
-    Future.delayed(const Duration(milliseconds: 1800), () {
-      if (mounted) Navigator.of(context).pop();
-    });
   }
 
   @override
@@ -371,14 +435,14 @@ class _AuthSuccessDialogState extends State<_AuthSuccessDialog> with SingleTicke
       child: Material(
         color: Colors.transparent,
         child: Container(
-          width: 300,
+          width: 320,
           padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 28),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: widget.colors.first.withValues(alpha: 0.22),
+                color: const Color(0xFFFF6F91).withValues(alpha: 0.22),
                 blurRadius: 40,
                 offset: const Offset(0, 16),
               ),
@@ -394,14 +458,14 @@ class _AuthSuccessDialogState extends State<_AuthSuccessDialog> with SingleTicke
                   height: 80,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    gradient: LinearGradient(
+                    gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
-                      colors: widget.colors,
+                      colors: [Color(0xFFFF6F91), Color(0xFFFF8A65)],
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: widget.colors.first.withValues(alpha: 0.35),
+                        color: const Color(0xFFFF6F91).withValues(alpha: 0.35),
                         blurRadius: 24,
                         offset: const Offset(0, 8),
                       ),
@@ -411,23 +475,44 @@ class _AuthSuccessDialogState extends State<_AuthSuccessDialog> with SingleTicke
                 ),
               ),
               const SizedBox(height: 22),
-              Text(
-                widget.title,
+              const Text(
+                'Account Created! 🎉',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.ink,
-                ),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.ink),
               ),
               const SizedBox(height: 8),
               Text(
-                widget.subtitle,
+                'Your MMWELCONN account is ready. Login to get started.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.ink.withValues(alpha: 0.55),
-                  fontWeight: FontWeight.w500,
+                style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55), fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: widget.onGoToLogin,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF4E8DFF).withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.login_rounded, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text('Go to Login', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
+                    ],
+                  ),
                 ),
               ),
             ],
