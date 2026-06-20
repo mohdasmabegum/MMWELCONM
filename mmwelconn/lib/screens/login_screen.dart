@@ -117,6 +117,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           const SnackBar(content: Text('Login failed. Check your details.')),
         );
       } else {
+        await showAuthSuccess(
+          context,
+          title: 'Welcome back!',
+          subtitle: 'You are now logged in.',
+          colors: const [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
+        );
+        if (!mounted) return;
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } finally {

@@ -325,6 +325,129 @@ class FeaturePill extends StatelessWidget {
   }
 }
 
+Future<void> showAuthSuccess(BuildContext context, {required String title, required String subtitle, required List<Color> colors}) async {
+  await showGeneralDialog(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.black.withValues(alpha: 0.45),
+    transitionDuration: const Duration(milliseconds: 400),
+    transitionBuilder: (_, anim, __, child) => FadeTransition(
+      opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.78, end: 1.0).animate(
+          CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+        ),
+        child: child,
+      ),
+    ),
+    pageBuilder: (_, __, ___) => _AuthSuccessDialog(title: title, subtitle: subtitle, colors: colors),
+  );
+}
+
+class _AuthSuccessDialog extends StatefulWidget {
+  final String title;
+  final String subtitle;
+  final List<Color> colors;
+
+  const _AuthSuccessDialog({required this.title, required this.subtitle, required this.colors});
+
+  @override
+  State<_AuthSuccessDialog> createState() => _AuthSuccessDialogState();
+}
+
+class _AuthSuccessDialogState extends State<_AuthSuccessDialog> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _checkScale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..forward();
+    _checkScale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    Future.delayed(const Duration(milliseconds: 1800), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 300,
+          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 28),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: widget.colors.first.withValues(alpha: 0.22),
+                blurRadius: 40,
+                offset: const Offset(0, 16),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ScaleTransition(
+                scale: _checkScale,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: widget.colors,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: widget.colors.first.withValues(alpha: 0.35),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 44),
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                widget.subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.ink.withValues(alpha: 0.55),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 PageRoute<T> buildPageRoute<T>(Widget page) {
   return PageRouteBuilder<T>(
     transitionDuration: const Duration(milliseconds: 420),

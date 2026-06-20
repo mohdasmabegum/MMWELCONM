@@ -126,6 +126,13 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
           const SnackBar(content: Text('Registration failed. Try again.')),
         );
       } else {
+        await showAuthSuccess(
+          context,
+          title: 'Account Created!',
+          subtitle: 'Welcome to MMWELCONN 🎉',
+          colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
+        );
+        if (!mounted) return;
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } finally {
