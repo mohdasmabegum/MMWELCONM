@@ -126,11 +126,13 @@ class _BrandLogoState extends State<BrandLogo> with SingleTickerProviderStateMix
           ),
         );
       },
-      child: Image.asset(
-        'assets/logo.png',
-        width: size,
-        height: size,
-        fit: BoxFit.contain,
+      child: ClipOval(
+        child: Image.asset(
+          'assets/logo.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
@@ -414,13 +416,15 @@ class _AccountCreatedDialog extends StatefulWidget {
 
 class _AccountCreatedDialogState extends State<_AccountCreatedDialog> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _checkScale;
+  late final Animation<double> _scale;
+  late final Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..forward();
-    _checkScale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..forward();
+    _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
   }
 
   @override
@@ -434,88 +438,91 @@ class _AccountCreatedDialogState extends State<_AccountCreatedDialog> with Singl
     return Center(
       child: Material(
         color: Colors.transparent,
-        child: Container(
-          width: 320,
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 28),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF6F91).withValues(alpha: 0.22),
-                blurRadius: 40,
-                offset: const Offset(0, 16),
+        child: FadeTransition(
+          opacity: _fade,
+          child: ScaleTransition(
+            scale: _scale,
+            child: Container(
+              width: 320,
+              padding: const EdgeInsets.symmetric(vertical: 38, horizontal: 28),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF9B6DFF).withValues(alpha: 0.18),
+                    blurRadius: 44,
+                    offset: const Offset(0, 18),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ScaleTransition(
-                scale: _checkScale,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFFFF6F91), Color(0xFFFF8A65)],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFFFF6F91).withValues(alpha: 0.35),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF9B6DFF), Color(0xFFFF6F91)],
                       ),
-                    ],
-                  ),
-                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 44),
-                ),
-              ),
-              const SizedBox(height: 22),
-              const Text(
-                'Account Created! 🎉',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.ink),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Your MMWELCONN account is ready. Login to get started.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55), fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 24),
-              GestureDetector(
-                onTap: widget.onGoToLogin,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF9B6DFF).withValues(alpha: 0.32),
+                          blurRadius: 22,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF4E8DFF).withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
+                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 42),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Welcome to MMWELCONN! 🎉',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.ink),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Your account has been created successfully.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55), fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Ready to connect your mood with style?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.42)),
+                  ),
+                  const SizedBox(height: 26),
+                  const Divider(height: 1),
+                  const SizedBox(height: 18),
+                  GestureDetector(
+                    onTap: widget.onGoToLogin,
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'Already have your account? ',
+                        style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55)),
+                        children: const [
+                          TextSpan(
+                            text: 'Log in',
+                            style: TextStyle(
+                              color: Color(0xFF4E8DFF),
+                              fontWeight: FontWeight.w800,
+                              decoration: TextDecoration.underline,
+                              decorationColor: Color(0xFF4E8DFF),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.login_rounded, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text('Go to Login', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 15)),
-                    ],
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
