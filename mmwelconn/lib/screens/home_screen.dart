@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/screens/chats_screen.dart';
 import 'package:mmwelconn/screens/contacts_screen.dart';
+import 'package:mmwelconn/screens/crud_test_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _HomePage(),
     const ChatsScreen(),
     const ContactsScreen(),
+    const CrudTestScreen(),
   ];
 
   @override
