@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mmwelconn/screens/chats_screen.dart';
+import 'package:mmwelconn/screens/contacts_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
@@ -14,57 +16,22 @@ class _HomeScreenState extends State<HomeScreen> {
   final AuthService _authService = AuthService();
   int _selectedIndex = 0;
 
+  static final List<Widget> _pages = [
+    _HomePage(),
+    const ChatsScreen(),
+    const ContactsScreen(),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    final User? user = _authService.getCurrentUser();
-
     return Scaffold(
-      body: SoftGlowBackground(
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final bool desktop = constraints.maxWidth > 900;
-              // Vertically center the main content on the screen (while still scrollable).
-              return Center(
-                child: SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      // Reserve space for bottom nav so centering doesn't overlap it.
-                      minHeight: constraints.maxHeight - 140,
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: desktop ? 56 : 20,
-                        vertical: 24,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _TopHero(user: user),
-                          const SizedBox(height: 26),
-                          _StatsRow(user: user),
-                          const SizedBox(height: 26),
-                          _QuickActions(
-                            authService: _authService,
-                            userName: user?.email?.split('@').first ?? 'User',
-                          ),
-                          const SizedBox(height: 26),
-                          _FuturisticPanel(),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
+      body: _pages[_selectedIndex],
       bottomNavigationBar: _buildBottomNav(),
     );
   }
 
   Widget _buildBottomNav() {
+    // ignore: lines_longer_than_80_chars
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       decoration: BoxDecoration(
@@ -91,9 +58,56 @@ class _HomeScreenState extends State<HomeScreen> {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.chat_rounded), label: 'Chats'),
-            BottomNavigationBarItem(icon: Icon(Icons.favorite_rounded), label: 'Mood'),
+            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Contacts'),
             BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomePage extends StatelessWidget {
+  const _HomePage();
+
+  @override
+  Widget build(BuildContext context) {
+    final authService = AuthService();
+    final user = authService.getCurrentUser();
+    return SoftGlowBackground(
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bool desktop = constraints.maxWidth > 900;
+            return Center(
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight - 140),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: desktop ? 56 : 20,
+                      vertical: 24,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _TopHero(user: user),
+                        const SizedBox(height: 26),
+                        _StatsRow(user: user),
+                        const SizedBox(height: 26),
+                        _QuickActions(
+                          authService: authService,
+                          userName: user?.email?.split('@').first ?? 'User',
+                        ),
+                        const SizedBox(height: 26),
+                        _FuturisticPanel(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

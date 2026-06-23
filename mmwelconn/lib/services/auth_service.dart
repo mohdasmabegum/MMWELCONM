@@ -1,10 +1,11 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mmwelconn/models/user_model.dart';
+import 'package:mmwelconn/services/firestore_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirestoreService _firestoreService = FirestoreService();
 
   // Sign up with email and password
   Future<User?> signUp(String email, String password, String name) async {
@@ -16,16 +17,13 @@ class AuthService {
       User? user = result.user;
 
       if (user != null) {
-        // Save user data to Firestore
-        await _firestore.collection('users').doc(user.uid).set({
-          'uid': user.uid,
-          'email': email,
-          'name': name,
-          'createdAt': DateTime.now(),
-          'profilePicture': '',
-          'status': 'online',
-          'lastActive': DateTime.now(),
-        });
+        await _firestoreService.createUser(UserModel(
+          uid: user.uid,
+          name: name,
+          email: email,
+          createdAt: DateTime.now(),
+          lastActive: DateTime.now(),
+        ));
       }
 
       return user;
@@ -106,8 +104,7 @@ class AuthService {
       final user = _auth.currentUser;
       if (user != null) {
         await user.linkWithCredential(credential);
-        // Update user document with phone
-        await _firestore.collection('users').doc(user.uid).update({
+        await _firestoreService.updateUser(user.uid, {
           'phoneNumber': user.phoneNumber,
           'mfaEnabled': true,
         });
