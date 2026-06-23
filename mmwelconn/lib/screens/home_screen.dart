@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/screens/chats_screen.dart';
 import 'package:mmwelconn/screens/contacts_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
+import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -67,13 +69,35 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _HomePage extends StatelessWidget {
+class _HomePage extends StatefulWidget {
   const _HomePage();
 
   @override
+  State<_HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<_HomePage> {
+  final FirestoreService _fs = FirestoreService();
+  final AuthService _authService = AuthService();
+  UserModel? _userModel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    final uid = _authService.getCurrentUser()?.uid;
+    if (uid == null) return;
+    final user = await _fs.getUser(uid);
+    if (mounted) setState(() => _userModel = user);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final authService = AuthService();
-    final user = authService.getCurrentUser();
+    final firebaseUser = _authService.getCurrentUser();
+    final displayName = _userModel?.name ?? firebaseUser?.email?.split('@').first ?? 'Friend';
     return SoftGlowBackground(
       child: SafeArea(
         child: LayoutBuilder(
@@ -91,14 +115,11 @@ class _HomePage extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _TopHero(user: user),
+                        _TopHero(displayName: displayName),
                         const SizedBox(height: 26),
-                        _StatsRow(user: user),
+                        _StatsRow(),
                         const SizedBox(height: 26),
-                        _QuickActions(
-                          authService: authService,
-                          userName: user?.email?.split('@').first ?? 'User',
-                        ),
+                        _QuickActions(authService: _authService),
                         const SizedBox(height: 26),
                         _FuturisticPanel(),
                       ],
@@ -115,9 +136,9 @@ class _HomePage extends StatelessWidget {
 }
 
 class _TopHero extends StatelessWidget {
-  final User? user;
+  final String displayName;
 
-  const _TopHero({required this.user});
+  const _TopHero({required this.displayName});
 
   @override
   Widget build(BuildContext context) {
@@ -161,7 +182,7 @@ class _TopHero extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Welcome back, ${user?.email?.split('@').first ?? 'Friend'}',
+              'Welcome back, $displayName',,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppTheme.ink,
@@ -183,9 +204,7 @@ class _TopHero extends StatelessWidget {
 }
 
 class _StatsRow extends StatelessWidget {
-  final User? user;
-
-  const _StatsRow({required this.user});
+  const _StatsRow();
 
   @override
   Widget build(BuildContext context) {
@@ -239,9 +258,8 @@ class _StatsRow extends StatelessWidget {
 
 class _QuickActions extends StatelessWidget {
   final AuthService authService;
-  final String userName;
 
-  const _QuickActions({required this.authService, required this.userName});
+  const _QuickActions({required this.authService});
 
   @override
   Widget build(BuildContext context) {
