@@ -182,7 +182,7 @@ class _TopHero extends StatelessWidget {
             ),
             const SizedBox(height: 18),
             Text(
-              'Welcome back, $displayName',,
+              'Welcome back, $displayName',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: AppTheme.ink,
