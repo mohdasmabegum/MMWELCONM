@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-enum ContactStatus { none, pending, accepted, blocked }
+enum ContactStatus { none, pending, accepted, declined, blocked }
 
 class ContactModel {
   final String id;
