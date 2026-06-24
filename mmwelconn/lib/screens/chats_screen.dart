@@ -2,7 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mmwelconn/models/chat_model.dart';
 import 'package:mmwelconn/models/contact_model.dart';
-import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/screens/chat_detail_screen.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
@@ -60,7 +59,7 @@ class ChatsScreen extends StatelessWidget {
                       return ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
                         itemCount: chats.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, x) => const SizedBox(height: 8),
                         itemBuilder: (_, i) => _ChatTile(chat: chats[i], uid: uid),
                       );
                     },
@@ -274,7 +273,7 @@ class _ContactPickerSheet extends StatelessWidget {
                 }
                 return ListView.separated(
                   itemCount: contacts.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, x) => const SizedBox(height: 8),
                   itemBuilder: (_, i) {
                     final c = contacts[i];
                     return GestureDetector(

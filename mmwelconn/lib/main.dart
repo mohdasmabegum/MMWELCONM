@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mmwelconn/firebase_options.dart';
-import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/screens/auth_landing_screen.dart';
 import 'package:mmwelconn/screens/home_screen.dart';
 import 'package:mmwelconn/screens/login_screen.dart';

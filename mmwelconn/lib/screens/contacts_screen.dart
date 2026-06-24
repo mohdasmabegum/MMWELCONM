@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart' as fc;
 import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
-import 'package:mmwelconn/models/chat_model.dart';
 import 'package:mmwelconn/screens/chat_detail_screen.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
@@ -347,7 +346,7 @@ class _SearchResults extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       itemCount: results.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, x) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final u = results[i];
         return _ContactTile(
@@ -475,7 +474,7 @@ class _PendingList extends StatelessWidget {
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           itemCount: contacts.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          separatorBuilder: (_, x) => const SizedBox(height: 8),
           itemBuilder: (_, i) {
             final c = contacts[i];
             return _ContactTile(
@@ -599,7 +598,7 @@ class _DeviceContactsListState extends State<_DeviceContactsList> {
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
             itemCount: filtered.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, x) => const SizedBox(height: 8),
             itemBuilder: (_, i) {
               final c = filtered[i];
               final phone = c.phones.isNotEmpty ? c.phones.first.number : '';

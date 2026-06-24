@@ -92,8 +92,8 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       if (!mounted) return;
 
       if (user != null) {
-        // Link phone number to account
         await _authService.verifyAndLinkPhone(_verificationId!, _phoneController.text);
+        if (!mounted) return;
         Navigator.of(context).popUntil((route) => route.isFirst);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -235,7 +235,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                                       Switch(
                                         value: _showMfaSection,
                                         onChanged: (_) => _toggleMfaSection(),
-                                        activeColor: const Color(0xFF4E8DFF),
+                                        activeThumbColor: const Color(0xFF4E8DFF),
                                       ),
                                     ],
                                   ),
