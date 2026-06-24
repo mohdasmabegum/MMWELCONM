@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mmwelconn/models/user_model.dart';
@@ -17,18 +19,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _auth = AuthService();
   UserModel? _user;
   bool _notificationsEnabled = true;
+  StreamSubscription<UserModel?>? _userSub;
 
   @override
   void initState() {
     super.initState();
-    _loadUser();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _userSub = _fs.watchUser(uid).listen((u) {
+        if (mounted) setState(() => _user = u);
+      });
+    }
   }
 
-  Future<void> _loadUser() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final u = await _fs.getUser(uid);
-    if (mounted) setState(() => _user = u);
+  @override
+  void dispose() {
+    _userSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _logout() async {
@@ -62,17 +69,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (uid == null) return;
     final newStatus = isOnline ? 'online' : 'offline';
     await _fs.setUserStatus(uid, newStatus);
-    await _loadUser();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(isOnline
-              ? '🟢 You are now visible as Online'
-              : '⚫ You are now appearing Offline'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(isOnline
+            ? '🟢 You are now visible as Online'
+            : '⚫ You are now appearing Offline'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   void _showEditProfile() {
@@ -95,13 +100,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final uid = FirebaseAuth.instance.currentUser?.uid;
               if (uid == null) return;
               await _fs.updateUser(uid, {'name': name});
-              await _loadUser();
-              if (mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile updated ✓')),
-                );
-              }
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Profile updated ✓')),
+              );
             }),
           ],
         ),
@@ -154,18 +157,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     email: user.email!, password: currentCtrl.text);
                 await user.reauthenticateWithCredential(cred);
                 await user.updatePassword(newCtrl.text);
-                if (mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Password changed ✓')),
-                  );
-                }
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password changed ✓')),
+                );
               } on FirebaseAuthException catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.message ?? 'Failed to update')),
-                  );
-                }
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(e.message ?? 'Failed to update')),
+                );
               }
             }),
           ],
@@ -200,12 +201,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _sheetBtn('Verify & Link', AppTheme.violet, () async {
                   final user = await _auth.verifyAndLinkPhone(
                       verificationId!, otpCtrl.text.trim());
-                  if (user != null && mounted) {
-                    await _loadUser();
+                  if (user != null && ctx.mounted) {
                     Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Phone linked & MFA enabled ✓')),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Phone linked & MFA enabled ✓')),
+                      );
+                    }
                   }
                 }),
               ] else
@@ -455,7 +457,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Switch(
                     value: isOnline,
                     onChanged: _toggleVisibility,
-                    activeColor: Colors.green,
+                    activeThumbColor: Colors.green,
                   ),
                 ],
               ),
@@ -534,7 +536,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: _notificationsEnabled,
                     onChanged: (v) =>
                         setState(() => _notificationsEnabled = v),
-                    activeColor: AppTheme.coral,
+                    activeThumbColor: AppTheme.coral,
                   ),
                 ],
               ),
