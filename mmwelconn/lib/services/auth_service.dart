@@ -1,7 +1,14 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
+
+String _generateMmId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  final rand = Random();
+  return 'MM${List.generate(6, (_) => chars[rand.nextInt(chars.length)]).join()}';
+}
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -19,6 +26,7 @@ class AuthService {
       if (user != null) {
         await _firestoreService.createUser(UserModel(
           uid: user.uid,
+          mmId: _generateMmId(),
           name: name,
           email: email,
           createdAt: DateTime.now(),

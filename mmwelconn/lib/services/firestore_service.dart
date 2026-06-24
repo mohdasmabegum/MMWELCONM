@@ -34,13 +34,21 @@ class FirestoreService {
       .map((d) => d.exists ? UserModel.fromDoc(d) : null);
 
   Future<List<UserModel>> searchUsers(String query) async {
-    final snap = await _db
+    // Search by name
+    final nameSnap = await _db
         .collection('users')
         .where('name', isGreaterThanOrEqualTo: query)
         .where('name', isLessThanOrEqualTo: '$query\uf8ff')
         .limit(20)
         .get();
-    return snap.docs.map(UserModel.fromDoc).toList();
+    // Search by mmId (exact)
+    final mmIdSnap = await _db
+        .collection('users')
+        .where('mmId', isEqualTo: query.toUpperCase())
+        .limit(5)
+        .get();
+    final combined = {...nameSnap.docs, ...mmIdSnap.docs};
+    return combined.map(UserModel.fromDoc).toList();
   }
 
   // ── Contacts /users/{uid}/contacts/{contactId} ───────────────────────────
@@ -60,6 +68,15 @@ class FirestoreService {
           .collection('contacts')
           .doc(contactUid)
           .update({'status': status.name});
+
+  Future<void> updateContactRelationship(
+          String ownerUid, String contactUid, RelationshipType type) =>
+      _db
+          .collection('users')
+          .doc(ownerUid)
+          .collection('contacts')
+          .doc(contactUid)
+          .update({'relationshipType': type.name});
 
   Future<void> removeContact(String ownerUid, String contactUid) => _db
       .collection('users')
