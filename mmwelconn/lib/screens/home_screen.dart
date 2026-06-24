@@ -478,23 +478,34 @@ class _MoodSheetState extends State<_MoodSheet> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     setState(() => _posting = true);
-    await _fs.postMood(MoodModel(
-      id: '',
-      userId: uid,
-      userDisplayName: widget.userModel?.name ?? '',
-      userPhotoUrl: widget.userModel?.profilePicture ?? '',
-      emoji: _selectedEmoji!,
-      label: _selectedLabel!,
-      note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
-      isPublic: _isPublic,
-      createdAt: DateTime.now(),
-    ));
-    // update currentMoodId on user doc
-    await _fs.updateUser(uid, {'currentMoodId': _selectedLabel});
-    if (mounted) {
+    try {
+      await _fs.postMood(MoodModel(
+        id: '',
+        userId: uid,
+        userDisplayName: widget.userModel?.name ?? '',
+        userPhotoUrl: widget.userModel?.profilePicture ?? '',
+        emoji: _selectedEmoji!,
+        label: _selectedLabel!,
+        note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        isPublic: _isPublic,
+        createdAt: DateTime.now(),
+      ));
+      await _fs.updateUser(uid, {'currentMoodId': _selectedLabel});
+      if (!mounted) return;
+      final emoji = _selectedEmoji;
+      final label = _selectedLabel;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Mood shared: $_selectedEmoji $_selectedLabel')),
+        SnackBar(
+          content: Text('Mood shared: $emoji $label ✓'),
+          backgroundColor: AppTheme.violet,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _posting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to share mood: $e')),
       );
     }
   }

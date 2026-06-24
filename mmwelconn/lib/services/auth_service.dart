@@ -48,7 +48,13 @@ class AuthService {
         email: email,
         password: password,
       );
-      return result.user;
+      final user = result.user;
+      if (user != null) {
+        try {
+          await _firestoreService.setUserStatus(user.uid, 'online');
+        } catch (_) {}
+      }
+      return user;
     } on FirebaseAuthException catch (e) {
       print('Login error: ${e.message}');
       return null;

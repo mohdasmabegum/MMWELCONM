@@ -57,27 +57,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
-    if (confirm == true) {
+    if (confirm != true) return;
+    try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) await _fs.setUserStatus(uid, 'offline');
-      await _auth.logout();
-    }
+    } catch (_) {}
+    await _auth.logout();
   }
 
   Future<void> _toggleVisibility(bool isOnline) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     final newStatus = isOnline ? 'online' : 'offline';
-    await _fs.setUserStatus(uid, newStatus);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(isOnline
-            ? '🟢 You are now visible as Online'
-            : '⚫ You are now appearing Offline'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    try {
+      await _fs.setUserStatus(uid, newStatus);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isOnline ? '🟢 Now visible as Online' : '⚫ Now appearing Offline'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update status')),
+      );
+    }
   }
 
   void _showEditProfile() {
@@ -457,7 +463,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Switch(
                     value: isOnline,
                     onChanged: _toggleVisibility,
-                    activeThumbColor: Colors.green,
+                    activeColor: Colors.green,
                   ),
                 ],
               ),

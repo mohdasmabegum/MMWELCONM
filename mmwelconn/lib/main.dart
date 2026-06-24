@@ -82,19 +82,10 @@ class _AuthGateState extends State<AuthGate> {
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (!mounted) return;
       final loggedIn = user != null;
-      if (loggedIn && !_isLoggedIn) {
-        // Delay navigation so any popup on the stack can finish first
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) setState(() => _isLoggedIn = true);
-        });
-      } else if (!loggedIn && _isLoggedIn) {
-        setState(() => _isLoggedIn = false);
-      } else if (!_ready) {
-        setState(() {
-          _isLoggedIn = loggedIn;
-          _ready = true;
-        });
-      }
+      setState(() {
+        _isLoggedIn = loggedIn;
+        _ready = true;
+      });
     });
   }
 
