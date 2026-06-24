@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.mmwelconn.app",
+      "package_name": "com.mm.welconn",
       "sha256_cert_fingerprints": [
         "8E:B1:75:53:8D:1C:C7:21:DA:AB:B6:38:DB:3E:CD:12:3F:92:C4:ED:B9:81:6C:B7:F6:EF:85:7E:E0:65:D6:A8"
       ]
