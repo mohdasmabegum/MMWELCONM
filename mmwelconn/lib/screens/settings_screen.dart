@@ -68,9 +68,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleVisibility(bool isOnline) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final newStatus = isOnline ? 'online' : 'offline';
+    // Optimistically update UI immediately
+    setState(() {
+      _user = _user == null ? null : UserModel(
+        uid: _user!.uid,
+        mmId: _user!.mmId,
+        name: _user!.name,
+        email: _user!.email,
+        profilePicture: _user!.profilePicture,
+        status: isOnline ? 'online' : 'offline',
+        currentMoodId: _user!.currentMoodId,
+        phoneNumber: _user!.phoneNumber,
+        mfaEnabled: _user!.mfaEnabled,
+        createdAt: _user!.createdAt,
+        lastActive: _user!.lastActive,
+      );
+    });
     try {
-      await _fs.setUserStatus(uid, newStatus);
+      await _fs.setUserStatus(uid, isOnline ? 'online' : 'offline');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -87,13 +102,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showEditProfile() {
-    final nameCtrl =
-        TextEditingController(text: _user?.name ?? '');
+    final nameCtrl = TextEditingController(text: _user?.name ?? '');
+    final scaffoldCtx = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _BottomSheet(
+      builder: (sheetCtx) => _BottomSheet(
         title: 'Edit Profile',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -106,9 +121,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               final uid = FirebaseAuth.instance.currentUser?.uid;
               if (uid == null) return;
               await _fs.updateUser(uid, {'name': name});
-              if (!context.mounted) return;
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
+              if (!sheetCtx.mounted) return;
+              Navigator.pop(sheetCtx);
+              ScaffoldMessenger.of(scaffoldCtx).showSnackBar(
                 const SnackBar(content: Text('Profile updated ✓')),
               );
             }),
@@ -122,11 +137,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final currentCtrl = TextEditingController();
     final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
+    final scaffoldCtx = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _BottomSheet(
+      builder: (sheetCtx) => _BottomSheet(
         title: 'Change Password',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -145,13 +161,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 20),
             _sheetBtn('Update Password', AppTheme.sky, () async {
               if (newCtrl.text != confirmCtrl.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(scaffoldCtx).showSnackBar(
                   const SnackBar(content: Text('Passwords do not match')),
                 );
                 return;
               }
               if (newCtrl.text.length < 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(scaffoldCtx).showSnackBar(
                   const SnackBar(
                       content: Text('Password must be at least 6 characters')),
                 );
@@ -163,14 +179,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     email: user.email!, password: currentCtrl.text);
                 await user.reauthenticateWithCredential(cred);
                 await user.updatePassword(newCtrl.text);
-                if (!context.mounted) return;
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (!sheetCtx.mounted) return;
+                Navigator.pop(sheetCtx);
+                ScaffoldMessenger.of(scaffoldCtx).showSnackBar(
                   const SnackBar(content: Text('Password changed ✓')),
                 );
               } on FirebaseAuthException catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                ScaffoldMessenger.of(scaffoldCtx).showSnackBar(
                   SnackBar(content: Text(e.message ?? 'Failed to update')),
                 );
               }
@@ -385,6 +400,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: AppTheme.ink
                                     .withValues(alpha: 0.5))),
                         const SizedBox(height: 6),
+                        if (_user?.mmId.isNotEmpty == true)
+                          GestureDetector(
+                            onTap: () {
+                              final messenger = ScaffoldMessenger.of(context);
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('MM ID copied: ${_user!.mmId}')),
+                              );
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'ID: ${_user!.mmId}',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.violet,
+                                      fontWeight: FontWeight.w700),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.copy_rounded,
+                                    size: 11, color: AppTheme.violet),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 3),
@@ -542,7 +582,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     value: _notificationsEnabled,
                     onChanged: (v) =>
                         setState(() => _notificationsEnabled = v),
-                    activeThumbColor: AppTheme.coral,
+                    activeColor: AppTheme.coral,
                   ),
                 ],
               ),
