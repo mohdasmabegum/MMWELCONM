@@ -108,11 +108,12 @@ class _HomePageState extends State<_HomePage> {
   }
 
   void _showMoodSheet() {
+    final parentCtx = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MoodSheet(userModel: _userModel),
+      builder: (_) => _MoodSheet(userModel: _userModel, parentCtx: parentCtx),
     );
   }
 
@@ -168,7 +169,7 @@ class _TopHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = (userModel?.status ?? 'online') == 'online';
+    final isOnline = userModel?.status == 'online';
     return HoverCard(
       child: Container(
         padding: const EdgeInsets.all(24),
@@ -448,7 +449,8 @@ class _ActionCard extends StatelessWidget {
 
 class _MoodSheet extends StatefulWidget {
   final UserModel? userModel;
-  const _MoodSheet({required this.userModel});
+  final BuildContext parentCtx;
+  const _MoodSheet({required this.userModel, required this.parentCtx});
 
   @override
   State<_MoodSheet> createState() => _MoodSheetState();
@@ -495,7 +497,7 @@ class _MoodSheetState extends State<_MoodSheet> {
       final emoji = _selectedEmoji;
       final label = _selectedLabel;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(widget.parentCtx).showSnackBar(
         SnackBar(
           content: Text('Mood shared: $emoji $label ✓'),
           backgroundColor: AppTheme.violet,
@@ -504,7 +506,7 @@ class _MoodSheetState extends State<_MoodSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _posting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(widget.parentCtx).showSnackBar(
         SnackBar(content: Text('Failed to share mood: $e')),
       );
     }

@@ -253,12 +253,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showPrivacy() {
+    void _showPrivacy() {
+    final scaffoldCtx = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _BottomSheet(
+      builder: (sheetCtx) => _BottomSheet(
         title: 'Privacy',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -281,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icons.favorite_outline_rounded,
             ),
             const SizedBox(height: 20),
-            _sheetBtn('Save', AppTheme.violet, () => Navigator.pop(context)),
+            _sheetBtn('Save', AppTheme.violet, () => Navigator.pop(sheetCtx)),
           ],
         ),
       ),
@@ -334,7 +335,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final email = FirebaseAuth.instance.currentUser?.email ?? '';
     final name = _user?.name ?? email.split('@').first;
     final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
-    final isOnline = (_user?.status ?? 'online') == 'online';
+    final isOnline = _user?.status == 'online';
 
     return SoftGlowBackground(
       child: SafeArea(
@@ -453,6 +454,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
             // ── Visibility ───────────────────────────────────────────────
             _SectionLabel('Visibility'),
+            if (_user == null)
+              const Center(child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: CircularProgressIndicator(),
+              ))
+            else
             Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(

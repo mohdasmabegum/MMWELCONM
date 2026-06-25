@@ -7,6 +7,7 @@ import 'package:mmwelconn/screens/home_screen.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/screens/register_screen.dart';
 import 'package:mmwelconn/screens/splash_screen.dart';
+import 'package:mmwelconn/widgets/app_brand.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,10 +29,6 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      routes: {
-        '/login': (_) => const LoginScreen(),
-        '/register': (_) => const RegisterScreen(),
-      },
       home: const SplashFlow(),
     );
   }
@@ -65,49 +62,38 @@ class _SplashFlowState extends State<SplashFlow> {
   }
 }
 
-class AuthGate extends StatefulWidget {
+class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
   @override
-  State<AuthGate> createState() => _AuthGateState();
-}
-
-class _AuthGateState extends State<AuthGate> {
-  bool _isLoggedIn = false;
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    FirebaseAuth.instance.authStateChanges().listen((user) {
-      if (!mounted) return;
-      final loggedIn = user != null;
-      setState(() {
-        _isLoggedIn = loggedIn;
-        _ready = true;
-      });
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (!_ready) {
-      return Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(
-            color: Theme.of(context).colorScheme.primary,
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          );
+        }
+        if (snap.data != null) return const HomeScreen();
+        // Pop all pushed routes (Login/Register) so we land cleanly on AuthLandingScreen
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final nav = Navigator.of(context);
+          if (nav.canPop()) nav.popUntil((route) => route.isFirst);
+        });
+        return AuthLandingScreen(
+          onLoginTap: () => Navigator.of(context).push(
+            buildPageRoute(const LoginScreen()),
           ),
-        ),
-      );
-    }
-
-    if (_isLoggedIn) {
-      return const HomeScreen();
-    }
-
-    return AuthLandingScreen(
-      onLoginTap: () => Navigator.of(context).pushNamed('/login'),
-      onRegisterTap: () => Navigator.of(context).pushNamed('/register'),
+          onRegisterTap: () => Navigator.of(context).push(
+            buildPageRoute(const RegisterScreen()),
+          ),
+        );
+      },
     );
   }
 }

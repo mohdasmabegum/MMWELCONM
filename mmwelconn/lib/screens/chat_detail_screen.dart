@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:mmwelconn/models/chat_model.dart';
+import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
@@ -20,20 +21,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scroll = ScrollController();
   StreamSubscription<List<MessageModel>>? _msgSub;
+  StreamSubscription<UserModel?>? _otherUserSub;
   List<MessageModel> _messages = [];
   bool _loading = true;
+  bool _otherOnline = false;
 
   String get _myName =>
       widget.chat.participantNames[widget.currentUid] ?? 'Me';
+
+  String get _otherUid => widget.chat.participantIds
+      .firstWhere((id) => id != widget.currentUid, orElse: () => '');
 
   String get _otherName {
     if (widget.chat.chatType == ChatType.group) {
       return widget.chat.groupName ?? 'Group';
     }
-    return widget.chat.participantNames.entries
-        .firstWhere((e) => e.key != widget.currentUid,
-            orElse: () => const MapEntry('', 'Unknown'))
-        .value;
+    return widget.chat.participantNames[_otherUid] ?? 'Unknown';
   }
 
   @override
@@ -60,11 +63,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         });
       }
     });
+    // Watch other user's real status
+    if (_otherUid.isNotEmpty) {
+      _otherUserSub = _fs.watchUser(_otherUid).listen((u) {
+        if (mounted) setState(() => _otherOnline = u?.status == 'online');
+      });
+    }
   }
 
   @override
   void dispose() {
     _msgSub?.cancel();
+    _otherUserSub?.cancel();
     _msgCtrl.dispose();
     _scroll.dispose();
     super.dispose();
@@ -94,7 +104,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              _AppBar(title: _otherName),
+              _AppBar(title: _otherName, isOnline: _otherOnline),
               Expanded(
                 child: _loading
                     ? const Center(child: CircularProgressIndicator())
@@ -196,7 +206,8 @@ class _DateSeparator extends StatelessWidget {
 
 class _AppBar extends StatelessWidget {
   final String title;
-  const _AppBar({required this.title});
+  final bool isOnline;
+  const _AppBar({required this.title, required this.isOnline});
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +243,7 @@ class _AppBar extends StatelessWidget {
                   width: 11,
                   height: 11,
                   decoration: BoxDecoration(
-                    color: Colors.green,
+                    color: isOnline ? Colors.green : Colors.grey,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
@@ -250,10 +261,12 @@ class _AppBar extends StatelessWidget {
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
                         color: AppTheme.ink)),
-                Text('Online',
+                Text(isOnline ? 'Online' : 'Offline',
                     style: TextStyle(
                         fontSize: 11,
-                        color: Colors.green.withValues(alpha: 0.9),
+                        color: isOnline
+                            ? Colors.green.withValues(alpha: 0.9)
+                            : Colors.grey,
                         fontWeight: FontWeight.w600)),
               ],
             ),
