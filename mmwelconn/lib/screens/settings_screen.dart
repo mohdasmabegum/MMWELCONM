@@ -251,7 +251,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showPrivacy() {
-    final scaffoldCtx = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

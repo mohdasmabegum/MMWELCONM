@@ -160,8 +160,7 @@ class _HoverCardState extends State<HoverCard> {
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
         margin: widget.margin,
-        transform: Matrix4.identity()
-          ..translate(0.0, _hovering ? -8.0 : 0.0)
+        transform: Matrix4.translationValues(0.0, _hovering ? -8.0 : 0.0, 0.0)
           ..scale(_hovering ? 1.012 : 1.0),
         decoration: BoxDecoration(
           boxShadow: [
@@ -213,8 +212,7 @@ class _HoverActionButtonState extends State<HoverActionButton> {
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          transform: Matrix4.identity()
-            ..translate(0.0, _hovering ? -5.0 : 0.0)
+          transform: Matrix4.translationValues(0.0, _hovering ? -5.0 : 0.0, 0.0)
             ..scale(_hovering ? 1.02 : 1.0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),

@@ -8,7 +8,6 @@ import 'package:mmwelconn/screens/home_screen.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/screens/register_screen.dart';
 import 'package:mmwelconn/screens/splash_screen.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 @pragma('vm:entry-point')

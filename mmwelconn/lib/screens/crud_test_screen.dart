@@ -162,7 +162,6 @@ class _UserCrud extends StatefulWidget {
 class _UserCrudState extends State<_UserCrud> {
   final _nameCtrl = TextEditingController();
   String _result = 'Result will appear here...';
-  UserModel? _readUser;
 
   @override
   void dispose() {
@@ -180,8 +179,8 @@ class _UserCrudState extends State<_UserCrud> {
           children: [
             _actionBtn('Read My User Doc', AppTheme.sky, () async {
               final u = await widget.fs.getUser(widget.uid);
+              if (!context.mounted) return;
               setState(() {
-                _readUser = u;
                 _result = u != null
                     ? 'uid: ${u.uid}\nname: ${u.name}\nemail: ${u.email}\nstatus: ${u.status}\ncreatedAt: ${u.createdAt}'
                     : 'No user found';
@@ -298,19 +297,24 @@ class _ContactCrudState extends State<_ContactCrud> {
             _actionBtn('Add Contact', AppTheme.sky, () async {
               if (_contactUidCtrl.text.trim().isEmpty ||
                   _contactNameCtrl.text.trim().isEmpty) {
+                if (!context.mounted) return;
                 _toast(context, 'Fill both fields');
                 return;
               }
-              await widget.fs.addContact(ContactModel(
-                id: '',
-                ownerUid: widget.uid,
-                contactUid: _contactUidCtrl.text.trim(),
-                contactName: _contactNameCtrl.text.trim(),
-                status: ContactStatus.pending,
-                addedAt: DateTime.now(),
-              ));
+              await widget.fs.sendContactRequest(
+                senderUid: widget.uid,
+                senderName: 'Test',
+                senderMmId: '',
+                senderPhotoUrl: '',
+                recipientUid: _contactUidCtrl.text.trim(),
+                recipientName: _contactNameCtrl.text.trim(),
+                recipientMmId: '',
+                recipientPhotoUrl: '',
+                relationship: RelationshipType.friend,
+              );
               setState(() =>
                   _result = 'Created contact: ${_contactNameCtrl.text.trim()} (${_contactUidCtrl.text.trim()})');
+              if (!context.mounted) return;
               _toast(context, 'Contact added ✓');
             }),
             _resultBox(_result),

@@ -732,7 +732,7 @@ class _MoodSheetState extends State<_MoodSheet> {
                 Switch(
                   value: _isPublic,
                   onChanged: (v) => setState(() => _isPublic = v),
-                  activeColor: AppTheme.violet,
+                  activeThumbColor: AppTheme.violet,
                 ),
                 const SizedBox(width: 8),
                 Text(_isPublic ? 'Visible to everyone' : 'Only me',

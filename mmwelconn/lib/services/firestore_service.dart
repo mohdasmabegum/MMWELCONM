@@ -105,8 +105,8 @@ class FirestoreService {
   Future<void> acceptContact(String ownerUid, String contactUid) async {
     final ownerDoc = await _db.collection('users').doc(ownerUid).get();
     final contactDoc = await _db.collection('users').doc(contactUid).get();
-    final ownerData = ownerDoc.data() as Map<String, dynamic>? ?? {};
-    final contactData = contactDoc.data() as Map<String, dynamic>? ?? {};
+    final ownerData = ownerDoc.data() ?? {};
+    final contactData = contactDoc.data() ?? {};
     final ownerName = ownerData['name'] ?? '';
     final contactName = contactData['name'] ?? '';
 
