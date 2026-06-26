@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/auth_service.dart';
+import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
@@ -40,6 +44,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _userSub?.cancel();
     super.dispose();
+  }
+
+  bool _uploadingPhoto = false;
+
+  Future<void> _uploadPhoto() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final picker = ImagePicker();
+    XFile? picked;
+    if (kIsWeb) {
+      picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512, imageQuality: 85);
+    } else {
+      picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 512, imageQuality: 85);
+    }
+    if (picked == null) return;
+    setState(() => _uploadingPhoto = true);
+    try {
+      String url;
+      if (kIsWeb) {
+        final bytes = await picked.readAsBytes();
+        url = await CloudinaryService.uploadBytes(bytes, uid, picked.name);
+      } else {
+        url = await CloudinaryService.uploadFile(File(picked.path), uid);
+      }
+      await _fs.updateUser(uid, {'profilePicture': url});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile photo updated ✓')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Upload failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingPhoto = false);
+    }
   }
 
   Future<void> _logout() async {
@@ -303,33 +344,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: Row(
                 children: [
-                  Stack(
-                    children: [
-                      CircleAvatar(
-                        radius: 32,
-                        backgroundColor:
-                            AppTheme.violet.withValues(alpha: 0.18),
-                        child: Text(initials,
-                            style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.violet)),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: isOnline ? Colors.green : Colors.grey,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white, width: 2),
+                  GestureDetector(
+                    onTap: _uploadingPhoto ? null : _uploadPhoto,
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundColor: AppTheme.violet.withValues(alpha: 0.18),
+                          backgroundImage: _user?.profilePicture.isNotEmpty == true
+                              ? NetworkImage(_user!.profilePicture)
+                              : null,
+                          child: _user?.profilePicture.isNotEmpty == true
+                              ? null
+                              : Text(initials,
+                                  style: const TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.violet)),
+                        ),
+                        Positioned(
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: isOnline ? Colors.green : Colors.grey,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        if (_uploadingPhoto)
+                          Positioned.fill(
+                            child: CircleAvatar(
+                              radius: 32,
+                              backgroundColor: Colors.black.withValues(alpha: 0.4),
+                              child: const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          child: Container(
+                            width: 18,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: AppTheme.violet,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: const Icon(Icons.edit_rounded,
+                                size: 10, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
