@@ -253,12 +253,37 @@ class _TopHero extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    'Welcome back, $displayName 👋',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.ink,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Welcome back, $displayName 👋',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.ink,
+                            ),
+                      ),
+                      if (userModel?.mmId.isNotEmpty == true) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.violet.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.violet.withValues(alpha: 0.25)),
+                          ),
+                          child: Text(
+                            'ID: ${userModel!.mmId}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.violet,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
+                      ],
+                    ],
                   ),
                 ),
                 Container(
