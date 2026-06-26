@@ -34,6 +34,15 @@ class ChatsScreen extends StatelessWidget {
                       if (snap.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
+                      if (snap.hasError) {
+                        return Center(
+                          child: Text(
+                            'Could not load chats.\nCheck your connection and try again.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppTheme.ink.withValues(alpha: 0.45)),
+                          ),
+                        );
+                      }
                       final chats = snap.data ?? [];
                       if (chats.isEmpty) {
                         return Center(
@@ -228,11 +237,26 @@ class _NewChatFab extends StatelessWidget {
   }
 }
 
-class _ContactPickerSheet extends StatelessWidget {
+class _ContactPickerSheet extends StatefulWidget {
   final String uid;
   final FirestoreService fs;
 
   const _ContactPickerSheet({required this.uid, required this.fs});
+
+  @override
+  State<_ContactPickerSheet> createState() => _ContactPickerSheetState();
+}
+
+class _ContactPickerSheetState extends State<_ContactPickerSheet> {
+  String _myName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    widget.fs.getUser(widget.uid).then((u) {
+      if (mounted) setState(() => _myName = u?.name ?? '');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -261,7 +285,7 @@ class _ContactPickerSheet extends StatelessWidget {
           const SizedBox(height: 14),
           Expanded(
             child: StreamBuilder<List<ContactModel>>(
-              stream: fs.watchContacts(uid, status: ContactStatus.accepted),
+              stream: widget.fs.watchContacts(widget.uid, status: ContactStatus.accepted),
               builder: (context, snap) {
                 final contacts = snap.data ?? [];
                 if (contacts.isEmpty) {
@@ -279,12 +303,12 @@ class _ContactPickerSheet extends StatelessWidget {
                     return GestureDetector(
                       onTap: () async {
                         Navigator.pop(context);
-                        final chatId = await fs.getOrCreateDirectChat(
-                            uid, '', c.contactUid, c.contactName);
-                        final chat = await fs.getChat(chatId);
+                        final chatId = await widget.fs.getOrCreateDirectChat(
+                            widget.uid, _myName, c.contactUid, c.contactName);
+                        final chat = await widget.fs.getChat(chatId);
                         if (chat != null && context.mounted) {
                           Navigator.of(context).push(
-                              buildPageRoute(ChatDetailScreen(chat: chat, currentUid: uid)));
+                              buildPageRoute(ChatDetailScreen(chat: chat, currentUid: widget.uid)));
                         }
                       },
                       child: Container(

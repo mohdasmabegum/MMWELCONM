@@ -30,7 +30,9 @@ class ConnectionModel {
       toUserId: d['toUserId'] ?? '',
       toUserName: d['toUserName'] ?? '',
       status: ConnectionStatus.values.byName(d['status'] ?? 'pending'),
-      createdAt: (d['createdAt'] as Timestamp).toDate(),
+      createdAt: d['createdAt'] != null
+          ? (d['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
