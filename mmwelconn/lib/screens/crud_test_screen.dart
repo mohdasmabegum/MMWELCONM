@@ -212,6 +212,7 @@ class _UserCrudState extends State<_UserCrud> {
                 return;
               }
               await widget.fs.updateUser(widget.uid, {'name': _nameCtrl.text.trim()});
+              if (!context.mounted) return;
               setState(() => _result = 'Updated name → ${_nameCtrl.text.trim()}');
               _toast(context, 'Name updated ✓');
             }),
@@ -223,11 +224,13 @@ class _UserCrudState extends State<_UserCrud> {
           children: [
             _actionBtn('Set Status: offline', AppTheme.pink, () async {
               await widget.fs.setUserStatus(widget.uid, 'offline');
+              if (!context.mounted) return;
               setState(() => _result = 'Status set to offline');
               _toast(context, 'Status updated ✓');
             }),
             _actionBtn('Set Status: online', const Color(0xFF4CAF50), () async {
               await widget.fs.setUserStatus(widget.uid, 'online');
+              if (!context.mounted) return;
               setState(() => _result = 'Status set to online');
               _toast(context, 'Status updated ✓');
             }),
@@ -330,6 +333,7 @@ class _ContactCrudState extends State<_ContactCrud> {
               }
               final c = await widget.fs.getContact(
                   widget.uid, _contactUidCtrl.text.trim());
+              if (!context.mounted) return;
               setState(() {
                 _result = c != null
                     ? 'name: ${c.contactName}\nstatus: ${c.status.name}\naddedAt: ${c.addedAt}'
@@ -352,6 +356,7 @@ class _ContactCrudState extends State<_ContactCrud> {
                 }
                 await widget.fs.updateContactStatus(
                     widget.uid, _contactUidCtrl.text.trim(), ContactStatus.accepted);
+                if (!context.mounted) return;
                 setState(() => _result = 'Status → accepted');
                 _toast(context, 'Updated ✓');
               })),
@@ -364,6 +369,7 @@ class _ContactCrudState extends State<_ContactCrud> {
                 }
                 await widget.fs.updateContactStatus(
                     widget.uid, _contactUidCtrl.text.trim(), ContactStatus.blocked);
+                if (!context.mounted) return;
                 setState(() => _result = 'Status → blocked');
                 _toast(context, 'Updated ✓');
               })),
@@ -381,6 +387,7 @@ class _ContactCrudState extends State<_ContactCrud> {
               }
               await widget.fs.removeContact(
                   widget.uid, _contactUidCtrl.text.trim());
+              if (!context.mounted) return;
               setState(() => _result = 'Deleted contact: ${_contactUidCtrl.text.trim()}');
               _toast(context, 'Deleted ✓');
             }),
@@ -462,6 +469,7 @@ class _ChatCrudState extends State<_ChatCrud> {
                 _otherUidCtrl.text.trim(),
                 _otherNameCtrl.text.trim(),
               );
+              if (!context.mounted) return;
               setState(() {
                 _chatId = id;
                 _result = 'Chat ID: $id';
@@ -480,6 +488,7 @@ class _ChatCrudState extends State<_ChatCrud> {
                 return;
               }
               final chat = await widget.fs.getChat(_chatId!);
+              if (!context.mounted) return;
               setState(() {
                 _result = chat != null
                     ? 'id: ${chat.id}\ntype: ${chat.chatType.name}\nparticipants: ${chat.participantNames.values.join(', ')}\nlastMessage: ${chat.lastMessage ?? 'none'}'
@@ -515,6 +524,7 @@ class _ChatCrudState extends State<_ChatCrud> {
                 ),
                 [widget.uid, _otherUidCtrl.text.trim()],
               );
+              if (!context.mounted) return;
               setState(() => _result = 'Message sent: "${_msgCtrl.text.trim()}"');
               _msgCtrl.clear();
               _toast(context, 'Message sent ✓');
@@ -531,6 +541,7 @@ class _ChatCrudState extends State<_ChatCrud> {
                 return;
               }
               await widget.fs.clearUnread(_chatId!, widget.uid);
+              if (!context.mounted) return;
               setState(() => _result = 'Unread cleared for $_chatId');
               _toast(context, 'Cleared ✓');
             }),

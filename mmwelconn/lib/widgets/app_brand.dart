@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3;
 
 class AppTheme {
   static const Color ink = Color(0xFF191B2C);
@@ -161,7 +162,7 @@ class _HoverCardState extends State<HoverCard> {
         curve: Curves.easeOutCubic,
         margin: widget.margin,
         transform: Matrix4.translationValues(0.0, _hovering ? -8.0 : 0.0, 0.0)
-          ..scale(_hovering ? 1.012 : 1.0),
+          ..scaleByVector3(Vector3.all(_hovering ? 1.012 : 1.0)),
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
@@ -213,7 +214,7 @@ class _HoverActionButtonState extends State<HoverActionButton> {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           transform: Matrix4.translationValues(0.0, _hovering ? -5.0 : 0.0, 0.0)
-            ..scale(_hovering ? 1.02 : 1.0),
+            ..scaleByVector3(Vector3.all(_hovering ? 1.02 : 1.0)),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             gradient: dark

@@ -36,13 +36,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       _userSub = _fs.watchUser(uid).listen((u) {
-        if (mounted) setState(() {
-          _user = u;
-          if (u != null) {
-            _notificationsEnabled = u.notificationsEnabled;
-            _autoUpdate = u.autoUpdate;
-          }
-        });
+        if (mounted) {
+          setState(() {
+            _user = u;
+            if (u != null) {
+              _notificationsEnabled = u.notificationsEnabled;
+              _autoUpdate = u.autoUpdate;
+            }
+          });
+        }
       });
     }
   }
