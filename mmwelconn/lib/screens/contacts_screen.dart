@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -25,23 +27,22 @@ class _ContactsScreenState extends State<ContactsScreen>
   bool _searching = false;
   bool _showSearch = false;
   UserModel? _myUser;
+  StreamSubscription<UserModel?>? _myUserSub;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 3, vsync: this);
-    _loadMyUser();
-  }
-
-  Future<void> _loadMyUser() async {
-    final u = await _fs.getUser(_uid);
-    if (mounted) setState(() => _myUser = u);
+    _myUserSub = _fs.watchUser(_uid).listen((u) {
+      if (mounted) setState(() => _myUser = u);
+    });
   }
 
   @override
   void dispose() {
     _tab.dispose();
     _searchCtrl.dispose();
+    _myUserSub?.cancel();
     super.dispose();
   }
 
@@ -69,17 +70,18 @@ class _ContactsScreenState extends State<ContactsScreen>
       );
       return;
     }
-    await _fs.addContact(ContactModel(
-      id: '',
-      ownerUid: _uid,
-      contactUid: user.uid,
-      contactMmId: user.mmId,
-      contactName: user.name,
-      contactPhotoUrl: user.profilePicture,
-      status: ContactStatus.pending,
-      relationshipType: relationship,
-      addedAt: DateTime.now(),
-    ));
+    final myUser = await _fs.getUser(_uid);
+    await _fs.sendContactRequest(
+      senderUid: _uid,
+      senderName: myUser?.name ?? '',
+      senderMmId: myUser?.mmId ?? '',
+      senderPhotoUrl: myUser?.profilePicture ?? '',
+      recipientUid: user.uid,
+      recipientName: user.name,
+      recipientMmId: user.mmId,
+      recipientPhotoUrl: user.profilePicture,
+      relationship: relationship,
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Contact request sent to ${user.name} ✓')),
@@ -483,11 +485,11 @@ class _PendingList extends StatelessWidget {
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 IconButton(
                   icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
-                  onPressed: () => fs.updateContactStatus(uid, c.contactUid, ContactStatus.accepted),
+                  onPressed: () => fs.acceptContact(uid, c.contactUid),
                 ),
                 IconButton(
                   icon: const Icon(Icons.cancel_rounded, color: AppTheme.pink, size: 22),
-                  onPressed: () => fs.updateContactStatus(uid, c.contactUid, ContactStatus.declined),
+                  onPressed: () => fs.declineContact(uid, c.contactUid),
                 ),
               ]),
             );

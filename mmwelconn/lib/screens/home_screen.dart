@@ -17,8 +17,33 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final fs = FirestoreService();
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      fs.setUserStatus(uid, 'offline');
+    } else if (state == AppLifecycleState.resumed) {
+      fs.setUserStatus(uid, 'online');
+    }
+  }
 
   void _goToTab(int index) => setState(() => _selectedIndex = index);
 
@@ -108,12 +133,11 @@ class _HomePageState extends State<_HomePage> {
   }
 
   void _showMoodSheet() {
-    final parentCtx = context;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _MoodSheet(userModel: _userModel, parentCtx: parentCtx),
+      builder: (_) => _MoodSheet(userModel: _userModel),
     );
   }
 
@@ -294,9 +318,8 @@ class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = [
-      ('Status', (userModel?.status ?? 'online').toUpperCase(), AppTheme.sky, Icons.circle),
+      ('Status', userModel?.status?.toUpperCase() ?? '...', AppTheme.sky, Icons.circle),
       ('Mood', userModel?.currentMoodId != null ? 'Set' : 'None', AppTheme.violet, Icons.favorite_rounded),
-      ('MFA', userModel?.mfaEnabled == true ? 'ON' : 'OFF', AppTheme.pink, Icons.security_rounded),
     ];
 
     return Wrap(
@@ -449,8 +472,7 @@ class _ActionCard extends StatelessWidget {
 
 class _MoodSheet extends StatefulWidget {
   final UserModel? userModel;
-  final BuildContext parentCtx;
-  const _MoodSheet({required this.userModel, required this.parentCtx});
+  const _MoodSheet({required this.userModel});
 
   @override
   State<_MoodSheet> createState() => _MoodSheetState();
@@ -481,7 +503,7 @@ class _MoodSheetState extends State<_MoodSheet> {
     if (uid == null) return;
     setState(() => _posting = true);
     try {
-      await _fs.postMood(MoodModel(
+      final moodId = await _fs.postMood(MoodModel(
         id: '',
         userId: uid,
         userDisplayName: widget.userModel?.name ?? '',
@@ -492,12 +514,12 @@ class _MoodSheetState extends State<_MoodSheet> {
         isPublic: _isPublic,
         createdAt: DateTime.now(),
       ));
-      await _fs.updateUser(uid, {'currentMoodId': _selectedLabel});
+      await _fs.updateUser(uid, {'currentMoodId': moodId});
       if (!mounted) return;
       final emoji = _selectedEmoji;
       final label = _selectedLabel;
       Navigator.pop(context);
-      ScaffoldMessenger.of(widget.parentCtx).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Mood shared: $emoji $label ✓'),
           backgroundColor: AppTheme.violet,
@@ -506,7 +528,7 @@ class _MoodSheetState extends State<_MoodSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _posting = false);
-      ScaffoldMessenger.of(widget.parentCtx).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to share mood: $e')),
       );
     }
