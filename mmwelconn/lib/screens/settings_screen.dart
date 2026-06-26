@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -306,6 +307,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: AppTheme.ink.withValues(alpha: 0.65),
                   fontSize: 13,
                   height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            FutureBuilder<String?>(
+              future: FirebaseMessaging.instance.getToken(),
+              builder: (context, snap) {
+                if (!snap.hasData) return const SizedBox.shrink();
+                return GestureDetector(
+                  onTap: () {
+                    Clipboard.setData(ClipboardData(text: snap.data!));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('FCM token copied ✓')),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.violet.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.violet.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.copy_rounded, size: 14, color: AppTheme.violet),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            snap.data!,
+                            style: const TextStyle(fontSize: 9, color: AppTheme.violet),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
