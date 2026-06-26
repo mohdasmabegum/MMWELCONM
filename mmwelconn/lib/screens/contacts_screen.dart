@@ -63,34 +63,41 @@ class _ContactsScreenState extends State<ContactsScreen>
 
   Future<void> _sendRequest(UserModel user, RelationshipType relationship) async {
     final existing = await _fs.getContact(_uid, user.uid);
+    if (!mounted) return;
     if (existing != null) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${user.name} is already in your connections')),
       );
       return;
     }
-    final myUser = await _fs.getUser(_uid);
-    await _fs.sendContactRequest(
-      senderUid: _uid,
-      senderName: myUser?.name ?? '',
-      senderMmId: myUser?.mmId ?? '',
-      senderPhotoUrl: myUser?.profilePicture ?? '',
-      recipientUid: user.uid,
-      recipientName: user.name,
-      recipientMmId: user.mmId,
-      recipientPhotoUrl: user.profilePicture,
-      relationship: relationship,
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Connection request sent to ${user.name} ✓')),
-    );
-    setState(() {
-      _searchCtrl.clear();
-      _searchResults = [];
-      _showSearch = false;
-    });
+    try {
+      final myUser = await _fs.getUser(_uid);
+      await _fs.sendContactRequest(
+        senderUid: _uid,
+        senderName: myUser?.name ?? '',
+        senderMmId: myUser?.mmId ?? '',
+        senderPhotoUrl: myUser?.profilePicture ?? '',
+        recipientUid: user.uid,
+        recipientName: user.name,
+        recipientMmId: user.mmId,
+        recipientPhotoUrl: user.profilePicture,
+        relationship: relationship,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Connection request sent to ${user.name} ✓')),
+      );
+      setState(() {
+        _searchCtrl.clear();
+        _searchResults = [];
+        _showSearch = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to send request: $e')),
+      );
+    }
   }
 
   Future<void> _startChat(ContactModel c) async {
@@ -509,17 +516,33 @@ class _PendingListState extends State<_PendingList> {
                 IconButton(
                   icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     setState(() => _processing.add(c.contactUid));
-                    await widget.fs.acceptContact(widget.uid, c.contactUid);
-                    if (mounted) setState(() => _processing.remove(c.contactUid));
+                    try {
+                      await widget.fs.acceptContact(widget.uid, c.contactUid);
+                    } catch (e) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text('Failed to accept: $e')),
+                      );
+                    } finally {
+                      if (mounted) setState(() => _processing.remove(c.contactUid));
+                    }
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.cancel_rounded, color: AppTheme.pink, size: 22),
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     setState(() => _processing.add(c.contactUid));
-                    await widget.fs.declineContact(widget.uid, c.contactUid);
-                    if (mounted) setState(() => _processing.remove(c.contactUid));
+                    try {
+                      await widget.fs.declineContact(widget.uid, c.contactUid);
+                    } catch (e) {
+                      messenger.showSnackBar(
+                        SnackBar(content: Text('Failed to decline: $e')),
+                      );
+                    } finally {
+                      if (mounted) setState(() => _processing.remove(c.contactUid));
+                    }
                   },
                 ),
               ]),

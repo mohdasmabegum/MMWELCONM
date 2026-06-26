@@ -40,9 +40,15 @@ class ContactModel {
       contactMmId: d['contactMmId'] ?? '',
       contactName: d['contactName'] ?? '',
       contactPhotoUrl: d['contactPhotoUrl'] ?? '',
-      status: ContactStatus.values.byName(d['status'] ?? 'pending'),
-      direction: ContactDirection.values.byName(d['direction'] ?? 'incoming'),
-      relationshipType: RelationshipType.values.byName(d['relationshipType'] ?? 'friend'),
+      status: ContactStatus.values.firstWhere(
+          (s) => s.name == (d['status'] ?? 'pending'),
+          orElse: () => ContactStatus.pending),
+      direction: ContactDirection.values.firstWhere(
+          (dir) => dir.name == (d['direction'] ?? 'incoming'),
+          orElse: () => ContactDirection.incoming),
+      relationshipType: RelationshipType.values.firstWhere(
+          (r) => r.name == (d['relationshipType'] ?? 'friend'),
+          orElse: () => RelationshipType.friend),
       addedAt: d['addedAt'] != null
           ? (d['addedAt'] as Timestamp).toDate()
           : DateTime.now(),

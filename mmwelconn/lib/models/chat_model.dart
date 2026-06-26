@@ -29,7 +29,9 @@ class ChatModel {
     final d = doc.data() as Map<String, dynamic>;
     return ChatModel(
       id: doc.id,
-      chatType: ChatType.values.byName(d['chatType'] ?? 'direct'),
+      chatType: ChatType.values.firstWhere(
+          (t) => t.name == (d['chatType'] ?? 'direct'),
+          orElse: () => ChatType.direct),
       participantIds: List<String>.from(d['participantIds'] ?? []),
       participantNames: Map<String, String>.from(d['participantNames'] ?? {}),
       groupName: d['groupName'],

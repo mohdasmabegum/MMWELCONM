@@ -64,39 +64,37 @@ class FirestoreService {
     required String recipientPhotoUrl,
     required RelationshipType relationship,
   }) async {
-    final now = DateTime.now();
     final batch = _db.batch();
+    final now = FieldValue.serverTimestamp();
 
     batch.set(
       _db.collection('users').doc(senderUid).collection('contacts').doc(recipientUid),
-      ContactModel(
-        id: '',
-        ownerUid: senderUid,
-        contactUid: recipientUid,
-        contactMmId: recipientMmId,
-        contactName: recipientName,
-        contactPhotoUrl: recipientPhotoUrl,
-        status: ContactStatus.pending,
-        direction: ContactDirection.outgoing,
-        relationshipType: relationship,
-        addedAt: now,
-      ).toMap(),
+      {
+        'ownerUid': senderUid,
+        'contactUid': recipientUid,
+        'contactMmId': recipientMmId,
+        'contactName': recipientName,
+        'contactPhotoUrl': recipientPhotoUrl,
+        'status': ContactStatus.pending.name,
+        'direction': ContactDirection.outgoing.name,
+        'relationshipType': relationship.name,
+        'addedAt': now,
+      },
     );
 
     batch.set(
       _db.collection('users').doc(recipientUid).collection('contacts').doc(senderUid),
-      ContactModel(
-        id: '',
-        ownerUid: recipientUid,
-        contactUid: senderUid,
-        contactMmId: senderMmId,
-        contactName: senderName,
-        contactPhotoUrl: senderPhotoUrl,
-        status: ContactStatus.pending,
-        direction: ContactDirection.incoming,
-        relationshipType: relationship,
-        addedAt: now,
-      ).toMap(),
+      {
+        'ownerUid': recipientUid,
+        'contactUid': senderUid,
+        'contactMmId': senderMmId,
+        'contactName': senderName,
+        'contactPhotoUrl': senderPhotoUrl,
+        'status': ContactStatus.pending.name,
+        'direction': ContactDirection.incoming.name,
+        'relationshipType': relationship.name,
+        'addedAt': now,
+      },
     );
 
     await batch.commit();
@@ -105,10 +103,8 @@ class FirestoreService {
   Future<void> acceptContact(String ownerUid, String contactUid) async {
     final ownerDoc = await _db.collection('users').doc(ownerUid).get();
     final contactDoc = await _db.collection('users').doc(contactUid).get();
-    final ownerData = ownerDoc.data() ?? {};
-    final contactData = contactDoc.data() ?? {};
-    final ownerName = ownerData['name'] ?? '';
-    final contactName = contactData['name'] ?? '';
+    final ownerName = (ownerDoc.data() ?? {})['name'] ?? '';
+    final contactName = (contactDoc.data() ?? {})['name'] ?? '';
 
     final ids = [ownerUid, contactUid]..sort();
     final chatId = ids.join('_');
@@ -116,26 +112,18 @@ class FirestoreService {
     final msgRef = chatRef.collection('messages').doc();
     final now = FieldValue.serverTimestamp();
 
-    // Use set with merge:false on contact docs to guarantee status is written
-    final ownerContactRef = _db.collection('users').doc(ownerUid).collection('contacts').doc(contactUid);
-    final contactOwnerRef = _db.collection('users').doc(contactUid).collection('contacts').doc(ownerUid);
-
-    final ownerContactDoc = await ownerContactRef.get();
-    final contactOwnerDoc = await contactOwnerRef.get();
+    final ownerContactRef = _db
+        .collection('users').doc(ownerUid).collection('contacts').doc(contactUid);
+    final contactOwnerRef = _db
+        .collection('users').doc(contactUid).collection('contacts').doc(ownerUid);
 
     final batch = _db.batch();
 
-    // Overwrite entire contact doc with accepted status
-    if (ownerContactDoc.exists) {
-      final d = ownerContactDoc.data() as Map<String, dynamic>;
-      batch.set(ownerContactRef, {...d, 'status': ContactStatus.accepted.name});
-    }
-    if (contactOwnerDoc.exists) {
-      final d = contactOwnerDoc.data() as Map<String, dynamic>;
-      batch.set(contactOwnerRef, {...d, 'status': ContactStatus.accepted.name});
-    }
+    // Update status directly — rules allow contactUid to update ownerUid's doc
+    batch.update(ownerContactRef, {'status': ContactStatus.accepted.name});
+    batch.update(contactOwnerRef, {'status': ContactStatus.accepted.name});
 
-    // Create chat with system welcome message
+    // Create or merge the chat doc with system welcome message
     batch.set(chatRef, {
       'chatType': ChatType.direct.name,
       'participantIds': [ownerUid, contactUid],

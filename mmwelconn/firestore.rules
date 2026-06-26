@@ -19,12 +19,14 @@ service cloud.firestore {
 
       // Contacts subcollection:
       // - Only the owner can read their own contacts
-      // - Only the owner can update or delete their own contacts
-      // - Any authenticated user can create (needed for bidirectional contact requests)
+      // - Any authenticated user can create (bidirectional contact requests)
+      // - Owner OR the contact themselves can update/delete
+      //   (needed for acceptContact / declineContact writing both sides)
       match /contacts/{contactId} {
         allow read: if isOwner(userId);
         allow create: if isAuth();
-        allow update, delete: if isOwner(userId);
+        allow update: if isOwner(userId) || (isAuth() && resource.data.contactUid == request.auth.uid);
+        allow delete: if isOwner(userId) || (isAuth() && resource.data.contactUid == request.auth.uid);
       }
     }
 
