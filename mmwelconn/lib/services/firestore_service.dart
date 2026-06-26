@@ -44,7 +44,10 @@ class FirestoreService {
         .where('mmId', isEqualTo: query.toUpperCase())
         .limit(5)
         .get();
-    final combined = {...nameSnap.docs, ...mmIdSnap.docs};
+    final seen = <String>{};
+    final combined = [...nameSnap.docs, ...mmIdSnap.docs]
+        .where((d) => seen.add(d.id))
+        .toList();
     return combined.map(UserModel.fromDoc).toList();
   }
 
@@ -206,7 +209,17 @@ class FirestoreService {
       .where('participantIds', arrayContains: uid)
       .orderBy('lastMessageAt', descending: true)
       .snapshots()
-      .map((s) => s.docs.map(ChatModel.fromDoc).toList());
+      .handleError((_) {})
+      .map((s) {
+        final chats = s.docs.map(ChatModel.fromDoc).toList();
+        chats.sort((a, b) {
+          if (a.lastMessageAt == null && b.lastMessageAt == null) return 0;
+          if (a.lastMessageAt == null) return 1;
+          if (b.lastMessageAt == null) return -1;
+          return b.lastMessageAt!.compareTo(a.lastMessageAt!);
+        });
+        return chats;
+      });
 
   Future<void> sendMessage(String chatId, MessageModel msg,
       List<String> allParticipantIds) async {

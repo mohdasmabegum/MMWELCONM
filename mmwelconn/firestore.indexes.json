@@ -2,7 +2,7 @@
   "indexes": [
     {
       "collectionGroup": "contacts",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "ownerUid", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
@@ -40,22 +40,6 @@
       "fields": [
         { "fieldPath": "isPublic", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "connections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "toUserId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "connections",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "fromUserId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
       ]
     }
   ],

@@ -8,8 +8,7 @@ class UserModel {
   final String profilePicture;
   final String status;
   final String? currentMoodId;
-  final String? phoneNumber;
-  final bool mfaEnabled;
+  final bool notificationsEnabled;
   final DateTime createdAt;
   final DateTime lastActive;
 
@@ -21,8 +20,7 @@ class UserModel {
     this.profilePicture = '',
     this.status = 'online',
     this.currentMoodId,
-    this.phoneNumber,
-    this.mfaEnabled = false,
+    this.notificationsEnabled = true,
     required this.createdAt,
     required this.lastActive,
   });
@@ -37,10 +35,13 @@ class UserModel {
       profilePicture: d['profilePicture'] ?? '',
       status: d['status'] ?? 'offline',
       currentMoodId: d['currentMoodId'],
-      phoneNumber: d['phoneNumber'],
-      mfaEnabled: d['mfaEnabled'] ?? false,
-      createdAt: (d['createdAt'] as Timestamp).toDate(),
-      lastActive: (d['lastActive'] as Timestamp).toDate(),
+      notificationsEnabled: d['notificationsEnabled'] ?? true,
+      createdAt: d['createdAt'] != null
+          ? (d['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
+      lastActive: d['lastActive'] != null
+          ? (d['lastActive'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
@@ -52,8 +53,7 @@ class UserModel {
         'profilePicture': profilePicture,
         'status': status,
         'currentMoodId': currentMoodId,
-        'phoneNumber': phoneNumber,
-        'mfaEnabled': mfaEnabled,
+        'notificationsEnabled': notificationsEnabled,
         'createdAt': Timestamp.fromDate(createdAt),
         'lastActive': Timestamp.fromDate(lastActive),
       };

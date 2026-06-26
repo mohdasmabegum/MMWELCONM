@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
@@ -27,7 +28,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
       _userSub = _fs.watchUser(uid).listen((u) {
-        if (mounted) setState(() => _user = u);
+        if (mounted) setState(() {
+          _user = u;
+          if (u != null) _notificationsEnabled = u.notificationsEnabled;
+        });
       });
     }
   }
@@ -70,19 +74,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (uid == null) return;
     // Optimistically update UI immediately
     setState(() {
-      _user = _user == null ? null : UserModel(
-        uid: _user!.uid,
-        mmId: _user!.mmId,
-        name: _user!.name,
-        email: _user!.email,
-        profilePicture: _user!.profilePicture,
-        status: isOnline ? 'online' : 'offline',
-        currentMoodId: _user!.currentMoodId,
-        phoneNumber: _user!.phoneNumber,
-        mfaEnabled: _user!.mfaEnabled,
-        createdAt: _user!.createdAt,
-        lastActive: _user!.lastActive,
-      );
+      if (_user != null) {
+        _user = UserModel(
+          uid: _user!.uid,
+          mmId: _user!.mmId,
+          name: _user!.name,
+          email: _user!.email,
+          profilePicture: _user!.profilePicture,
+          status: isOnline ? 'online' : 'offline',
+          currentMoodId: _user!.currentMoodId,
+          createdAt: _user!.createdAt,
+          lastActive: _user!.lastActive,
+        );
+      }
     });
     try {
       await _fs.setUserStatus(uid, isOnline ? 'online' : 'offline');
@@ -196,64 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _showPhoneMfa() {
-    final phoneCtrl = TextEditingController(
-        text: _user?.phoneNumber ?? '');
-    final otpCtrl = TextEditingController();
-    String? verificationId;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setS) => _BottomSheet(
-          title: 'Phone & MFA',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _sheetField(phoneCtrl, 'Phone number (+country code)',
-                  Icons.phone_android_rounded,
-                  type: TextInputType.phone),
-              const SizedBox(height: 12),
-              if (verificationId != null) ...[
-                _sheetField(otpCtrl, 'Enter OTP code', Icons.sms_rounded,
-                    type: TextInputType.number),
-                const SizedBox(height: 12),
-                _sheetBtn('Verify & Link', AppTheme.violet, () async {
-                  final user = await _auth.verifyAndLinkPhone(
-                      verificationId!, otpCtrl.text.trim());
-                  if (user != null && ctx.mounted) {
-                    Navigator.pop(ctx);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Phone linked & MFA enabled ✓')),
-                      );
-                    }
-                  }
-                }),
-              ] else
-                _sheetBtn('Send OTP', AppTheme.sky, () async {
-                  final id = await _auth.sendPhoneVerificationCode(
-                      phoneCtrl.text.trim());
-                  if (id != null) {
-                    setS(() => verificationId = id);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('OTP sent ✓')),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to send OTP')),
-                    );
-                  }
-                }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-    void _showPrivacy() {
+  void _showPrivacy() {
     final scaffoldCtx = context;
     showModalBottomSheet(
       context: context,
@@ -404,8 +351,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         if (_user?.mmId.isNotEmpty == true)
                           GestureDetector(
                             onTap: () {
-                              final messenger = ScaffoldMessenger.of(context);
-                              messenger.showSnackBar(
+                              Clipboard.setData(ClipboardData(text: _user!.mmId));
+                              ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('MM ID copied: ${_user!.mmId}')),
                               );
                             },
@@ -510,7 +457,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Switch(
                     value: isOnline,
                     onChanged: _toggleVisibility,
-                    activeColor: Colors.green,
+                    activeThumbColor: Colors.green,
                   ),
                 ],
               ),
@@ -532,15 +479,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: 'Update your login password',
               color: AppTheme.sky,
               onTap: _showChangePassword,
-            ),
-            _SettingsTile(
-              icon: Icons.phone_android_rounded,
-              label: 'Phone & MFA',
-              subtitle: _user?.mfaEnabled == true
-                  ? '✓ MFA Enabled'
-                  : 'Not configured',
-              color: AppTheme.pink,
-              onTap: _showPhoneMfa,
             ),
             const SizedBox(height: 10),
 
@@ -587,9 +525,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   Switch(
                     value: _notificationsEnabled,
-                    onChanged: (v) =>
-                        setState(() => _notificationsEnabled = v),
-                    activeColor: AppTheme.coral,
+                    onChanged: (v) async {
+                      setState(() => _notificationsEnabled = v);
+                      final uid = FirebaseAuth.instance.currentUser?.uid;
+                      if (uid != null) {
+                        await _fs.updateUser(uid, {'notificationsEnabled': v});
+                      }
+                    },
+                    activeThumbColor: AppTheme.coral,
                   ),
                 ],
               ),
