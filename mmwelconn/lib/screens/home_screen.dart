@@ -318,7 +318,7 @@ class _StatsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tiles = [
-      ('Status', userModel?.status?.toUpperCase() ?? '...', AppTheme.sky, Icons.circle),
+      ('Status', userModel?.status.toUpperCase() ?? '...', AppTheme.sky, Icons.circle),
       ('Mood', userModel?.currentMoodId != null ? 'Set' : 'None', AppTheme.violet, Icons.favorite_rounded),
     ];
 
