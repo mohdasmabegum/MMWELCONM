@@ -262,7 +262,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _privacyTile(
-              'Who can send me contact requests',
+              'Who can send me connection requests',
               'Everyone',
               Icons.people_outline_rounded,
             ),
@@ -565,7 +565,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 color: AppTheme.ink)),
                         Text(
                           isOnline
-                              ? 'Visible to contacts'
+                              ? 'Visible to connections'
                               : 'Appearing offline',
                           style: TextStyle(
                               fontSize: 12,

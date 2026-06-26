@@ -290,7 +290,7 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
                 final contacts = snap.data ?? [];
                 if (contacts.isEmpty) {
                   return Center(
-                    child: Text('No accepted contacts yet.\nAdd contacts first.',
+                    child: Text('No accepted connections yet.\nAdd connections first.',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: AppTheme.ink.withValues(alpha: 0.4))),
                   );

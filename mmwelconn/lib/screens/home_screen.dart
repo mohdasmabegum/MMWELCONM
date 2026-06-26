@@ -122,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.chat_rounded), label: 'Chats'),
-            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Contacts'),
+            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Connections'),
             BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
           ],
         ),
@@ -509,7 +509,7 @@ class _QuickActions extends StatelessWidget {
               Expanded(
                 child: _ActionCard(
                   icon: Icons.person_add_rounded,
-                  label: 'Add Contact',
+                  label: 'Add Connection',
                   color: AppTheme.violet,
                   onTap: onAddContact,
                 ),

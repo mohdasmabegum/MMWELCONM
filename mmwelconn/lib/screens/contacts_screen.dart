@@ -66,7 +66,7 @@ class _ContactsScreenState extends State<ContactsScreen>
     if (existing != null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${user.name} is already in your contacts')),
+        SnackBar(content: Text('${user.name} is already in your connections')),
       );
       return;
     }
@@ -84,7 +84,7 @@ class _ContactsScreenState extends State<ContactsScreen>
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Contact request sent to ${user.name} ✓')),
+      SnackBar(content: Text('Connection request sent to ${user.name} ✓')),
     );
     setState(() {
       _searchCtrl.clear();
@@ -393,10 +393,10 @@ class _ContactList extends StatelessWidget {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(Icons.people_outline_rounded, size: 56, color: AppTheme.ink.withValues(alpha: 0.2)),
               const SizedBox(height: 14),
-              Text('No contacts yet',
+              Text('No connections yet',
                   style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink.withValues(alpha: 0.4))),
               const SizedBox(height: 6),
-              Text('Tap 🔍 to search and add people',
+              Text('Tap 🔍 to search and connect with people',
                   style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.3))),
             ]),
           );
@@ -670,7 +670,7 @@ class _DeviceContactsListState extends State<_DeviceContactsList> {
           child: TextField(
             onChanged: (v) => setState(() => _filter = v),
             decoration: InputDecoration(
-              hintText: 'Filter contacts...',
+              hintText: 'Filter connections...',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
               fillColor: Colors.white.withValues(alpha: 0.88),
