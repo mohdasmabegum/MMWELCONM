@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:mmwelconn/models/mood_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
@@ -24,6 +25,38 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _initFcm();
+  }
+
+  Future<void> _initFcm() async {
+    final messaging = FirebaseMessaging.instance;
+    await messaging.requestPermission();
+    final token = await messaging.getToken();
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null && token != null) {
+      await FirestoreService().updateUser(uid, {'fcmToken': token});
+    }
+    // Refresh token when it changes
+    messaging.onTokenRefresh.listen((newToken) async {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await FirestoreService().updateUser(uid, {'fcmToken': newToken});
+      }
+    });
+    // Show snackbar for foreground messages
+    FirebaseMessaging.onMessage.listen((message) {
+      if (!mounted) return;
+      final title = message.notification?.title ?? '';
+      final body = message.notification?.body ?? '';
+      if (title.isEmpty && body.isEmpty) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$title: $body'),
+          backgroundColor: AppTheme.violet,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    });
   }
 
   @override
