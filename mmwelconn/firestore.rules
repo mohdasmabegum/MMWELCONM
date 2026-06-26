@@ -17,9 +17,14 @@ service cloud.firestore {
       allow update: if isOwner(userId);
       allow delete: if false;
 
-      // Contacts subcollection: only the owning user can manage their contacts
+      // Contacts subcollection:
+      // - Only the owner can read their own contacts
+      // - Only the owner can update or delete their own contacts
+      // - Any authenticated user can create (needed for bidirectional contact requests)
       match /contacts/{contactId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow create: if isAuth();
+        allow update, delete: if isOwner(userId);
       }
     }
 
@@ -45,14 +50,5 @@ service cloud.firestore {
       allow update, delete: if isAuth() && resource.data.userId == request.auth.uid;
     }
 
-    // ── Connections ────────────────────────────────────────────────────────
-    match /connections/{connectionId} {
-      allow read: if isAuth() &&
-        (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
-      allow create: if isAuth() && request.resource.data.fromUserId == request.auth.uid;
-      allow update: if isAuth() && resource.data.toUserId == request.auth.uid;
-      allow delete: if isAuth() &&
-        (resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid);
-    }
   }
 }

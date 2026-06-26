@@ -13,6 +13,8 @@ import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
+const String _currentVersion = '1.1.0';
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -25,6 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _auth = AuthService();
   UserModel? _user;
   bool _notificationsEnabled = true;
+  bool _autoUpdate = true;
   StreamSubscription<UserModel?>? _userSub;
 
   @override
@@ -35,7 +38,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _userSub = _fs.watchUser(uid).listen((u) {
         if (mounted) setState(() {
           _user = u;
-          if (u != null) _notificationsEnabled = u.notificationsEnabled;
+          if (u != null) {
+            _notificationsEnabled = u.notificationsEnabled;
+            _autoUpdate = u.autoUpdate;
+          }
         });
       });
     }
@@ -125,6 +131,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           profilePicture: _user!.profilePicture,
           status: isOnline ? 'online' : 'offline',
           currentMoodId: _user!.currentMoodId,
+          notificationsEnabled: _user!.notificationsEnabled,
+          autoUpdate: _user!.autoUpdate,
           createdAt: _user!.createdAt,
           lastActive: _user!.lastActive,
         );
@@ -658,6 +666,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 10),
 
+            // ── App Updates ───────────────────────────────────────────
+            _SectionLabel('App Updates'),
+            _AppUpdatesTile(autoUpdate: _autoUpdate, onAutoUpdateChanged: (v) async {
+              setState(() => _autoUpdate = v);
+              final uid = FirebaseAuth.instance.currentUser?.uid;
+              if (uid != null) await _fs.updateAutoUpdate(uid, v);
+            }),
+            const SizedBox(height: 10),
+
             // ── Support ──────────────────────────────────────────────────
             _SectionLabel('Support'),
             _SettingsTile(
@@ -905,3 +922,226 @@ class _SettingsTile extends StatelessWidget {
     );
   }
 }
+
+// ── App Updates tile ───────────────────────────────────────────────────
+
+class _AppUpdatesTile extends StatefulWidget {
+  final bool autoUpdate;
+  final ValueChanged<bool> onAutoUpdateChanged;
+  const _AppUpdatesTile({required this.autoUpdate, required this.onAutoUpdateChanged});
+
+  @override
+  State<_AppUpdatesTile> createState() => _AppUpdatesTileState();
+}
+
+class _AppUpdatesTileState extends State<_AppUpdatesTile> {
+  final FirestoreService _fs = FirestoreService();
+  Map<String, dynamic> _versionData = {};
+  StreamSubscription<Map<String, dynamic>>? _versionSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _versionSub = _fs.watchAppVersion().listen((data) {
+      if (mounted) setState(() => _versionData = data);
+    });
+  }
+
+  @override
+  void dispose() {
+    _versionSub?.cancel();
+    super.dispose();
+  }
+
+  String get _latestVersion => _versionData['latest'] ?? _currentVersion;
+  String get _releaseNotes => _versionData['releaseNotes'] ?? 'No release notes available.';
+  bool get _hasUpdate => _latestVersion != _currentVersion;
+
+  void _showUpdateDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: AppTheme.violet.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.system_update_rounded, color: AppTheme.violet, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Text('App Update', style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.ink)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text('Current: ', style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.5))),
+                Text(_currentVersion, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.ink)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text('Latest: ', style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.5))),
+                Text(_latestVersion, style: TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w700,
+                  color: _hasUpdate ? Colors.green : AppTheme.ink,
+                )),
+                if (_hasUpdate) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: const Text('NEW', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.green)),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text('What\'s new:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.ink.withValues(alpha: 0.6))),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.violet.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(_releaseNotes, style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.75), height: 1.5)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+          if (_hasUpdate)
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please refresh/reload the app to apply the latest update ✅'),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 5),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Update Now', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: _showUpdateDialog,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.78),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: (_hasUpdate ? Colors.green : AppTheme.violet).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _hasUpdate ? Icons.system_update_rounded : Icons.check_circle_rounded,
+                    color: _hasUpdate ? Colors.green : AppTheme.violet,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('App Version', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppTheme.ink)),
+                      Text(
+                        _hasUpdate ? 'Update available: v$_latestVersion' : 'Up to date • v$_currentVersion',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _hasUpdate ? Colors.green : AppTheme.ink.withValues(alpha: 0.45),
+                          fontWeight: _hasUpdate ? FontWeight.w700 : FontWeight.normal,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_hasUpdate)
+                  Container(
+                    width: 8, height: 8,
+                    decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                  ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right_rounded, color: AppTheme.ink.withValues(alpha: 0.3)),
+              ],
+            ),
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.78),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.sky.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.autorenew_rounded, color: AppTheme.sky, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Auto Update', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppTheme.ink)),
+                    Text(
+                      widget.autoUpdate ? 'Updates apply automatically' : 'Manual updates only',
+                      style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45)),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: widget.autoUpdate,
+                onChanged: widget.onAutoUpdateChanged,
+                activeThumbColor: AppTheme.sky,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+

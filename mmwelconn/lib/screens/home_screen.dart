@@ -369,15 +369,60 @@ class _TopHero extends StatelessWidget {
 
 // ── Stats row ─────────────────────────────────────────────────────────────────
 
-class _StatsRow extends StatelessWidget {
+class _StatsRow extends StatefulWidget {
   final UserModel? userModel;
   const _StatsRow({required this.userModel});
 
   @override
+  State<_StatsRow> createState() => _StatsRowState();
+}
+
+class _StatsRowState extends State<_StatsRow> {
+  final FirestoreService _fs = FirestoreService();
+  MoodModel? _currentMood;
+  StreamSubscription<MoodModel?>? _moodSub;
+  String? _watchedMoodId;
+
+  void _subscribeMood(String? moodId) {
+    if (moodId == _watchedMoodId) return;
+    _moodSub?.cancel();
+    _watchedMoodId = moodId;
+    if (moodId != null) {
+      _moodSub = _fs.watchMoodById(moodId).listen((m) {
+        if (mounted) setState(() => _currentMood = m);
+      });
+    } else {
+      setState(() => _currentMood = null);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeMood(widget.userModel?.currentMoodId);
+  }
+
+  @override
+  void didUpdateWidget(_StatsRow old) {
+    super.didUpdateWidget(old);
+    _subscribeMood(widget.userModel?.currentMoodId);
+  }
+
+  @override
+  void dispose() {
+    _moodSub?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final moodDisplay = _currentMood != null
+        ? '${_currentMood!.emoji} ${_currentMood!.label}'
+        : widget.userModel?.currentMoodId != null ? '...' : 'None';
+
     final tiles = [
-      ('Status', userModel?.status.toUpperCase() ?? '...', AppTheme.sky, Icons.circle),
-      ('Mood', userModel?.currentMoodId != null ? 'Set' : 'None', AppTheme.violet, Icons.favorite_rounded),
+      ('Status', widget.userModel?.status.toUpperCase() ?? '...', AppTheme.sky, Icons.circle),
+      ('Mood', moodDisplay, AppTheme.violet, Icons.favorite_rounded),
     ];
 
     return Wrap(
@@ -405,7 +450,7 @@ class _StatsRow extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w900,
                         color: AppTheme.ink,
-                        fontSize: 18,
+                        fontSize: 16,
                       )),
             ],
           ),

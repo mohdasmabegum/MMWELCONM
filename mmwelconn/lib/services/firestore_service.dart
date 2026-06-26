@@ -53,7 +53,6 @@ class FirestoreService {
 
   // ── Contacts ─────────────────────────────────────────────────────────────
 
-  // Sends a bidirectional contact request (both sides get a pending doc)
   Future<void> sendContactRequest({
     required String senderUid,
     required String senderName,
@@ -68,7 +67,6 @@ class FirestoreService {
     final now = DateTime.now();
     final batch = _db.batch();
 
-    // Sender's outgoing copy
     batch.set(
       _db.collection('users').doc(senderUid).collection('contacts').doc(recipientUid),
       ContactModel(
@@ -79,12 +77,12 @@ class FirestoreService {
         contactName: recipientName,
         contactPhotoUrl: recipientPhotoUrl,
         status: ContactStatus.pending,
+        direction: ContactDirection.outgoing,
         relationshipType: relationship,
         addedAt: now,
       ).toMap(),
     );
 
-    // Recipient's incoming copy
     batch.set(
       _db.collection('users').doc(recipientUid).collection('contacts').doc(senderUid),
       ContactModel(
@@ -95,6 +93,7 @@ class FirestoreService {
         contactName: senderName,
         contactPhotoUrl: senderPhotoUrl,
         status: ContactStatus.pending,
+        direction: ContactDirection.incoming,
         relationshipType: relationship,
         addedAt: now,
       ).toMap(),
@@ -103,29 +102,67 @@ class FirestoreService {
     await batch.commit();
   }
 
-  // Accepts a contact request on both sides atomically
-  Future<void> acceptContact(String ownerUid, String contactUid) {
+  Future<void> acceptContact(String ownerUid, String contactUid) async {
+    final ownerDoc = await _db.collection('users').doc(ownerUid).get();
+    final contactDoc = await _db.collection('users').doc(contactUid).get();
+    final ownerData = ownerDoc.data() as Map<String, dynamic>? ?? {};
+    final contactData = contactDoc.data() as Map<String, dynamic>? ?? {};
+    final ownerName = ownerData['name'] ?? '';
+    final contactName = contactData['name'] ?? '';
+
+    final ids = [ownerUid, contactUid]..sort();
+    final chatId = ids.join('_');
+    final chatRef = _db.collection('chats').doc(chatId);
+    final msgRef = chatRef.collection('messages').doc();
+    final now = FieldValue.serverTimestamp();
+
+    // Use set with merge:false on contact docs to guarantee status is written
+    final ownerContactRef = _db.collection('users').doc(ownerUid).collection('contacts').doc(contactUid);
+    final contactOwnerRef = _db.collection('users').doc(contactUid).collection('contacts').doc(ownerUid);
+
+    final ownerContactDoc = await ownerContactRef.get();
+    final contactOwnerDoc = await contactOwnerRef.get();
+
     final batch = _db.batch();
-    batch.update(
-      _db.collection('users').doc(ownerUid).collection('contacts').doc(contactUid),
-      {'status': ContactStatus.accepted.name},
-    );
-    batch.update(
-      _db.collection('users').doc(contactUid).collection('contacts').doc(ownerUid),
-      {'status': ContactStatus.accepted.name},
-    );
-    return batch.commit();
+
+    // Overwrite entire contact doc with accepted status
+    if (ownerContactDoc.exists) {
+      final d = ownerContactDoc.data() as Map<String, dynamic>;
+      batch.set(ownerContactRef, {...d, 'status': ContactStatus.accepted.name});
+    }
+    if (contactOwnerDoc.exists) {
+      final d = contactOwnerDoc.data() as Map<String, dynamic>;
+      batch.set(contactOwnerRef, {...d, 'status': ContactStatus.accepted.name});
+    }
+
+    // Create chat with system welcome message
+    batch.set(chatRef, {
+      'chatType': ChatType.direct.name,
+      'participantIds': [ownerUid, contactUid],
+      'participantNames': {ownerUid: ownerName, contactUid: contactName},
+      'unreadCount': {ownerUid: 0, contactUid: 1},
+      'lastMessage': '🎉 You are now connected! Let\'s start a new chat',
+      'lastSenderId': 'system',
+      'lastMessageAt': now,
+    }, SetOptions(merge: true));
+
+    batch.set(msgRef, {
+      'senderId': 'system',
+      'senderName': 'System',
+      'text': '🎉 You are now connected! Let\'s start a new chat',
+      'createdAt': now,
+    });
+
+    await batch.commit();
   }
 
   Future<void> declineContact(String ownerUid, String contactUid) {
     final batch = _db.batch();
-    batch.update(
+    batch.delete(
       _db.collection('users').doc(ownerUid).collection('contacts').doc(contactUid),
-      {'status': ContactStatus.declined.name},
     );
-    batch.update(
+    batch.delete(
       _db.collection('users').doc(contactUid).collection('contacts').doc(ownerUid),
-      {'status': ContactStatus.declined.name},
     );
     return batch.commit();
   }
@@ -156,13 +193,15 @@ class FirestoreService {
       .delete();
 
   Stream<List<ContactModel>> watchContacts(String uid,
-      {ContactStatus? status}) {
+      {ContactStatus? status, ContactDirection? direction}) {
     Query q = _db.collection('users').doc(uid).collection('contacts');
     if (status != null) q = q.where('status', isEqualTo: status.name);
-    return q
-        .orderBy('addedAt', descending: true)
-        .snapshots()
-        .map((s) => s.docs.map(ContactModel.fromDoc).toList());
+    if (direction != null) q = q.where('direction', isEqualTo: direction.name);
+    return q.snapshots().map((s) {
+      final list = s.docs.map(ContactModel.fromDoc).toList();
+      list.sort((a, b) => b.addedAt.compareTo(a.addedAt));
+      return list;
+    });
   }
 
   Future<ContactModel?> getContact(String ownerUid, String contactUid) async {
@@ -177,16 +216,12 @@ class FirestoreService {
 
   // ── Chats ─────────────────────────────────────────────────────────────────
 
-  // Uses deterministic chatId (sorted UIDs joined) for O(1) lookup
   Future<String> getOrCreateDirectChat(
       String myUid, String myName, String otherUid, String otherName) async {
-    // Sort UIDs so the same pair always produces the same chatId
     final ids = [myUid, otherUid]..sort();
     final chatId = ids.join('_');
-
     final ref = _db.collection('chats').doc(chatId);
     final doc = await ref.get();
-
     if (!doc.exists) {
       await ref.set(ChatModel(
         id: chatId,
@@ -213,7 +248,6 @@ class FirestoreService {
       .map((s) {
         final chats = s.docs.map(ChatModel.fromDoc).toList();
         chats.sort((a, b) {
-          if (a.lastMessageAt == null && b.lastMessageAt == null) return 0;
           if (a.lastMessageAt == null) return 1;
           if (b.lastMessageAt == null) return -1;
           return b.lastMessageAt!.compareTo(a.lastMessageAt!);
@@ -227,12 +261,10 @@ class FirestoreService {
     final msgRef =
         _db.collection('chats').doc(chatId).collection('messages').doc();
     batch.set(msgRef, msg.toMap());
-
     final unreadIncrements = {
       for (final uid in allParticipantIds.where((id) => id != msg.senderId))
         'unreadCount.$uid': FieldValue.increment(1)
     };
-
     batch.update(_db.collection('chats').doc(chatId), {
       'lastMessage': msg.text,
       'lastSenderId': msg.senderId,
@@ -262,6 +294,12 @@ class FirestoreService {
     return ref.id;
   }
 
+  Stream<MoodModel?> watchMoodById(String moodId) => _db
+      .collection('moods')
+      .doc(moodId)
+      .snapshots()
+      .map((d) => d.exists ? MoodModel.fromDoc(d) : null);
+
   Future<void> deleteMood(String moodId) =>
       _db.collection('moods').doc(moodId).delete();
 
@@ -284,4 +322,15 @@ class FirestoreService {
           .limit(limit)
           .snapshots()
           .map((s) => s.docs.map(MoodModel.fromDoc).toList());
+
+  // ── App Version ───────────────────────────────────────────────────────────
+
+  Stream<Map<String, dynamic>> watchAppVersion() => _db
+      .collection('app_config')
+      .doc('version')
+      .snapshots()
+      .map((d) => d.exists ? (d.data() as Map<String, dynamic>) : {});
+
+  Future<void> updateAutoUpdate(String uid, bool enabled) =>
+      _db.collection('users').doc(uid).update({'autoUpdate': enabled});
 }

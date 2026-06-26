@@ -34,7 +34,9 @@ class MoodModel {
       label: d['label'] ?? '',
       note: d['note'],
       isPublic: d['isPublic'] ?? true,
-      createdAt: (d['createdAt'] as Timestamp).toDate(),
+      createdAt: d['createdAt'] != null
+          ? (d['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
@@ -46,6 +48,6 @@ class MoodModel {
         'label': label,
         'note': note,
         'isPublic': isPublic,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': FieldValue.serverTimestamp(),
       };
 }

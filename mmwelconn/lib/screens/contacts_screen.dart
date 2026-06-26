@@ -32,7 +32,7 @@ class _ContactsScreenState extends State<ContactsScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     _myUserSub = _fs.watchUser(_uid).listen((u) {
       if (mounted) setState(() => _myUser = u);
     });
@@ -195,7 +195,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Contacts',
+                        Text('Connections',
                             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                   fontWeight: FontWeight.w900, color: AppTheme.ink)),
                         if (_myUser?.mmId.isNotEmpty == true)
@@ -270,9 +270,12 @@ class _ContactsScreenState extends State<ContactsScreen>
                 labelColor: AppTheme.violet,
                 unselectedLabelColor: AppTheme.ink.withValues(alpha: 0.45),
                 indicatorColor: AppTheme.violet,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 tabs: const [
-                  Tab(text: 'Contacts'),
+                  Tab(text: 'Connections'),
                   Tab(text: 'Pending'),
+                  Tab(text: 'Sent'),
                   Tab(text: 'Device'),
                 ],
               ),
@@ -282,6 +285,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                   children: [
                     _ContactList(uid: _uid, fs: _fs, onChat: _startChat),
                     _PendingList(uid: _uid, fs: _fs),
+                    _SentList(uid: _uid, fs: _fs),
                     _DeviceContactsList(onSearchByPhone: (phone) {
                       setState(() => _showSearch = true);
                       _searchCtrl.text = phone;
@@ -450,18 +454,27 @@ class _ContactList extends StatelessWidget {
   }
 }
 
-// ── Pending list ──────────────────────────────────────────────────────────────
+// ── Pending list (incoming only) ─────────────────────────────────────────────
 
-class _PendingList extends StatelessWidget {
+class _PendingList extends StatefulWidget {
   final String uid;
   final FirestoreService fs;
 
   const _PendingList({required this.uid, required this.fs});
 
   @override
+  State<_PendingList> createState() => _PendingListState();
+}
+
+class _PendingListState extends State<_PendingList> {
+  final Set<String> _processing = {};
+
+  @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ContactModel>>(
-      stream: fs.watchContacts(uid, status: ContactStatus.pending),
+      stream: widget.fs.watchContacts(widget.uid,
+          status: ContactStatus.pending,
+          direction: ContactDirection.incoming),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -469,8 +482,86 @@ class _PendingList extends StatelessWidget {
         final contacts = snap.data ?? [];
         if (contacts.isEmpty) {
           return Center(
-            child: Text('No pending requests',
-                style: TextStyle(color: AppTheme.ink.withValues(alpha: 0.4))),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.inbox_rounded, size: 48, color: AppTheme.ink.withValues(alpha: 0.2)),
+              const SizedBox(height: 12),
+              Text('No incoming requests',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink.withValues(alpha: 0.4))),
+              const SizedBox(height: 6),
+              Text('When someone sends you a request it appears here',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.3))),
+            ]),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          itemCount: contacts.length,
+          separatorBuilder: (_, x) => const SizedBox(height: 8),
+          itemBuilder: (_, i) {
+            final c = contacts[i];
+            // Skip items already being processed (accepted/declined) to prevent ghost re-appearance
+            if (_processing.contains(c.contactUid)) return const SizedBox.shrink();
+            return _ContactTile(
+              name: c.contactName,
+              subtitle: '${_relationshipEmoji(c.relationshipType)} ${_relationshipLabel(c.relationshipType)} · Wants to connect',
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(
+                  icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
+                  onPressed: () async {
+                    setState(() => _processing.add(c.contactUid));
+                    await widget.fs.acceptContact(widget.uid, c.contactUid);
+                    if (mounted) setState(() => _processing.remove(c.contactUid));
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.cancel_rounded, color: AppTheme.pink, size: 22),
+                  onPressed: () async {
+                    setState(() => _processing.add(c.contactUid));
+                    await widget.fs.declineContact(widget.uid, c.contactUid);
+                    if (mounted) setState(() => _processing.remove(c.contactUid));
+                  },
+                ),
+              ]),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ── Sent list (outgoing pending) ──────────────────────────────────────────────
+
+class _SentList extends StatelessWidget {
+  final String uid;
+  final FirestoreService fs;
+
+  const _SentList({required this.uid, required this.fs});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<List<ContactModel>>(
+      stream: fs.watchContacts(uid,
+          status: ContactStatus.pending,
+          direction: ContactDirection.outgoing),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final contacts = snap.data ?? [];
+        if (contacts.isEmpty) {
+          return Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.send_rounded, size: 48, color: AppTheme.ink.withValues(alpha: 0.2)),
+              const SizedBox(height: 12),
+              Text('No sent requests',
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink.withValues(alpha: 0.4))),
+              const SizedBox(height: 6),
+              Text('Requests you send will appear here until accepted',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.3))),
+            ]),
           );
         }
         return ListView.separated(
@@ -481,17 +572,12 @@ class _PendingList extends StatelessWidget {
             final c = contacts[i];
             return _ContactTile(
               name: c.contactName,
-              subtitle: '${_relationshipEmoji(c.relationshipType)} ${_relationshipLabel(c.relationshipType)} · Pending',
-              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                IconButton(
-                  icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
-                  onPressed: () => fs.acceptContact(uid, c.contactUid),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.cancel_rounded, color: AppTheme.pink, size: 22),
-                  onPressed: () => fs.declineContact(uid, c.contactUid),
-                ),
-              ]),
+              subtitle: '${_relationshipEmoji(c.relationshipType)} ${_relationshipLabel(c.relationshipType)} · Awaiting response',
+              trailing: TextButton.icon(
+                onPressed: () => fs.declineContact(uid, c.contactUid),
+                icon: const Icon(Icons.close_rounded, size: 16, color: AppTheme.pink),
+                label: const Text('Cancel', style: TextStyle(color: AppTheme.pink, fontWeight: FontWeight.w700)),
+              ),
             );
           },
         );

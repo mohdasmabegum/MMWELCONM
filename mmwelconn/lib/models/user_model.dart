@@ -9,6 +9,7 @@ class UserModel {
   final String status;
   final String? currentMoodId;
   final bool notificationsEnabled;
+  final bool autoUpdate;
   final DateTime createdAt;
   final DateTime lastActive;
 
@@ -21,6 +22,7 @@ class UserModel {
     this.status = 'online',
     this.currentMoodId,
     this.notificationsEnabled = true,
+    this.autoUpdate = true,
     required this.createdAt,
     required this.lastActive,
   });
@@ -36,6 +38,7 @@ class UserModel {
       status: d['status'] ?? 'offline',
       currentMoodId: d['currentMoodId'],
       notificationsEnabled: d['notificationsEnabled'] ?? true,
+      autoUpdate: d['autoUpdate'] ?? true,
       createdAt: d['createdAt'] != null
           ? (d['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -54,6 +57,7 @@ class UserModel {
         'status': status,
         'currentMoodId': currentMoodId,
         'notificationsEnabled': notificationsEnabled,
+        'autoUpdate': autoUpdate,
         'createdAt': Timestamp.fromDate(createdAt),
         'lastActive': Timestamp.fromDate(lastActive),
       };

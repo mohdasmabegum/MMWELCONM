@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mmwelconn/screens/register_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
@@ -14,13 +15,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final AuthService _authService = AuthService();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _otpController = TextEditingController();
   late final AnimationController _controller;
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
   bool _loading = false;
-  bool _showOtpSection = false;
-  String? _verificationId;
 
   @override
   void initState() {
@@ -40,61 +38,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _controller.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _otpController.dispose();
     super.dispose();
-  }
-
-  Future<void> _sendOtp(String phoneNumber) async {
-    if (phoneNumber.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter phone number')),
-      );
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      _verificationId = await _authService.sendPhoneVerificationCode(phoneNumber);
-      if (!mounted) return;
-      if (_verificationId != null) {
-        setState(() {
-          _loading = false;
-          _showOtpSection = true;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP sent! Check your phone.')),
-        );
-      } else {
-        setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send OTP. Try again.')),
-        );
-      }
-    } catch (e) {
-      setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _verifyOtp() async {
-    if (_verificationId == null || _otpController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter the OTP code')),
-      );
-      return;
-    }
-    setState(() => _loading = true);
-    try {
-      final user = await _authService.signInWithPhone(_verificationId!, _otpController.text);
-      if (!mounted) return;
-      if (user != null) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invalid OTP. Try again.')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
   }
 
   Future<void> _login() async {
@@ -106,25 +50,42 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     }
 
     setState(() => _loading = true);
-    final user = await _authService.login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Login failed. Check your details.')),
-      );
-    } else {
-      await showAuthSuccess(
-        context,
-        title: 'Welcome back!',
-        subtitle: 'You are now logged in.',
-        colors: const [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
+    try {
+      final user = await _authService.login(
+        _emailController.text.trim(),
+        _passwordController.text,
       );
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      setState(() => _loading = false);
+      if (user != null) {
+        await showAuthSuccess(
+          context,
+          title: 'Welcome back!',
+          subtitle: 'You are now logged in.',
+          colors: const [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
+        );
+        if (!mounted) return;
+        Navigator.of(context).pop();
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      final msg = switch (e.code) {
+        'user-not-found' => 'No account found for this email.',
+        'wrong-password' => 'Incorrect password. Please try again.',
+        'invalid-credential' => 'Incorrect email or password.',
+        'user-disabled' => 'This account has been disabled.',
+        'too-many-requests' => 'Too many attempts. Please try again later.',
+        'network-request-failed' => 'Network error. Check your connection.',
+        _ => e.message ?? 'Login failed. Please try again.',
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('An unexpected error occurred.')),
+      );
     }
   }
 
@@ -192,47 +153,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               colors: const [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
                               onPressed: _loading ? () {} : _login,
                             ),
-                            const SizedBox(height: 16),
-                            const Divider(height: 24, thickness: 1, color: Color(0xFFE0E0E0)),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Or sign in with Mobile OTP',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppTheme.ink.withValues(alpha: 0.55),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            AuthField(
-                              controller: _showOtpSection ? _otpController : _emailController,
-                              label: _showOtpSection ? 'Enter OTP code' : 'Phone number',
-                              icon: Icons.phone_android_rounded,
-                              keyboardType: TextInputType.phone,
-                            ),
-                            const SizedBox(height: 16),
-                            HoverActionButton(
-                              label: _loading
-                                  ? 'Processing...'
-                                  : (_showOtpSection ? 'Verify OTP' : 'Send OTP'),
-                              icon: _showOtpSection ? Icons.check_circle_rounded : Icons.sms_rounded,
-                              colors: const [Color(0xFF00C853), Color(0xFF69F0AE)],
-                              onPressed: _loading
-                                  ? () {}
-                                  : (_showOtpSection ? _verifyOtp : () => _sendOtp(_emailController.text)),
-                            ),
-                            if (!_showOtpSection) ...[
-                              const SizedBox(height: 10),
-                              Text(
-                                'We\'ll send a verification code to your phone',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppTheme.ink.withValues(alpha: 0.45),
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
                             const SizedBox(height: 14),
                             TextButton(
                               onPressed: () {

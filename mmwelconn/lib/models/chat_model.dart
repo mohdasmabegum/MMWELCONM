@@ -77,7 +77,9 @@ class MessageModel {
       senderId: d['senderId'] ?? '',
       senderName: d['senderName'] ?? '',
       text: d['text'] ?? '',
-      createdAt: (d['createdAt'] as Timestamp).toDate(),
+      createdAt: d['createdAt'] != null
+          ? (d['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
@@ -85,6 +87,6 @@ class MessageModel {
         'senderId': senderId,
         'senderName': senderName,
         'text': text,
-        'createdAt': Timestamp.fromDate(createdAt),
+        'createdAt': FieldValue.serverTimestamp(),
       };
 }

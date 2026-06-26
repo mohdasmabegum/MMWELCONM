@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum ContactStatus { none, pending, accepted, declined, blocked }
 
+enum ContactDirection { incoming, outgoing }
+
 enum RelationshipType { friend, family, partner, other }
 
 class ContactModel {
@@ -12,6 +14,7 @@ class ContactModel {
   final String contactName;
   final String contactPhotoUrl;
   final ContactStatus status;
+  final ContactDirection direction;
   final RelationshipType relationshipType;
   final DateTime addedAt;
 
@@ -23,6 +26,7 @@ class ContactModel {
     required this.contactName,
     this.contactPhotoUrl = '',
     this.status = ContactStatus.pending,
+    this.direction = ContactDirection.incoming,
     this.relationshipType = RelationshipType.friend,
     required this.addedAt,
   });
@@ -37,8 +41,11 @@ class ContactModel {
       contactName: d['contactName'] ?? '',
       contactPhotoUrl: d['contactPhotoUrl'] ?? '',
       status: ContactStatus.values.byName(d['status'] ?? 'pending'),
+      direction: ContactDirection.values.byName(d['direction'] ?? 'incoming'),
       relationshipType: RelationshipType.values.byName(d['relationshipType'] ?? 'friend'),
-      addedAt: (d['addedAt'] as Timestamp).toDate(),
+      addedAt: d['addedAt'] != null
+          ? (d['addedAt'] as Timestamp).toDate()
+          : DateTime.now(),
     );
   }
 
@@ -49,6 +56,7 @@ class ContactModel {
         'contactName': contactName,
         'contactPhotoUrl': contactPhotoUrl,
         'status': status.name,
+        'direction': direction.name,
         'relationshipType': relationshipType.name,
         'addedAt': Timestamp.fromDate(addedAt),
       };
