@@ -5,8 +5,8 @@ import 'dart:convert';
 
 class CloudinaryService {
   // Replace these with your Cloudinary credentials after signing up at cloudinary.com
-  static const String _cloudName = 'YOUR_CLOUD_NAME';
-  static const String _uploadPreset = 'mmwelconn_unsigned';
+  static const String _cloudName = 'doo2pelu8';
+  static const String _uploadPreset = 'mmwelcon';
 
   static const String _baseUrl = 'https://api.cloudinary.com/v1_1/$_cloudName/image/upload';
 
