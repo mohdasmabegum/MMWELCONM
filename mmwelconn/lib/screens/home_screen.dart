@@ -3,12 +3,15 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:mmwelconn/models/chat_model.dart';
+import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/mood_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/screens/chats_screen.dart';
 import 'package:mmwelconn/screens/contacts_screen.dart';
 import 'package:mmwelconn/screens/settings_screen.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
+import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,12 +23,96 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  final FirestoreService _fs = FirestoreService();
+  StreamSubscription<List<ContactModel>>? _pendingSub;
+  StreamSubscription<List<ContactModel>>? _acceptedSub;
+  StreamSubscription<List<ChatModel>>? _chatsSub;
+  Set<String> _knownPending = {};
+  Set<String> _knownAccepted = {};
+  Map<String, String?> _knownLastMsg = {};
+  bool _initialPendingLoaded = false;
+  bool _initialAcceptedLoaded = false;
+  bool _initialChatsLoaded = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _initFcm();
+    _initNotificationListeners();
+  }
+
+  void _initNotificationListeners() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final ns = NotificationService();
+
+    // Listen for incoming contact requests
+    _pendingSub = _fs
+        .watchContacts(uid, status: ContactStatus.pending, direction: ContactDirection.incoming)
+        .listen((contacts) {
+      final ids = contacts.map((c) => c.contactUid).toSet();
+      if (_initialPendingLoaded) {
+        for (final c in contacts) {
+          if (!_knownPending.contains(c.contactUid)) {
+            ns.show(InAppNotification(
+              title: 'New Connection Request',
+              body: '${c.contactName} wants to connect with you',
+              type: NotifType.newRequest,
+              onTap: () => setState(() => _selectedIndex = 2),
+            ));
+          }
+        }
+      }
+      _knownPending = ids;
+      _initialPendingLoaded = true;
+    });
+
+    // Listen for accepted connections
+    _acceptedSub = _fs
+        .watchContacts(uid, status: ContactStatus.accepted)
+        .listen((contacts) {
+      final ids = contacts.map((c) => c.contactUid).toSet();
+      if (_initialAcceptedLoaded) {
+        for (final c in contacts) {
+          if (!_knownAccepted.contains(c.contactUid)) {
+            ns.show(InAppNotification(
+              title: 'Connection Accepted! 🎉',
+              body: '${c.contactName} accepted your connection request',
+              type: NotifType.accepted,
+              onTap: () => setState(() => _selectedIndex = 1),
+            ));
+          }
+        }
+      }
+      _knownAccepted = ids;
+      _initialAcceptedLoaded = true;
+    });
+
+    // Listen for new messages
+    _chatsSub = _fs.watchMyChats(uid).listen((chats) {
+      if (_initialChatsLoaded) {
+        for (final chat in chats) {
+          final prev = _knownLastMsg[chat.id];
+          final curr = chat.lastMessage;
+          final isNewMsg = curr != null && curr != prev;
+          final notFromMe = chat.lastSenderId != uid && chat.lastSenderId != null;
+          if (isNewMsg && notFromMe) {
+            final senderName = chat.participantNames.entries
+                .firstWhere((e) => e.key != uid, orElse: () => const MapEntry('', 'Someone'))
+                .value;
+            ns.show(InAppNotification(
+              title: 'New Message from $senderName',
+              body: curr,
+              type: NotifType.newMessage,
+              onTap: () => setState(() => _selectedIndex = 1),
+            ));
+          }
+        }
+      }
+      _knownLastMsg = {for (final c in chats) c.id: c.lastMessage};
+      _initialChatsLoaded = true;
+    });
   }
 
   Future<void> _initFcm() async {
@@ -43,25 +130,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         await FirestoreService().updateUser(uid, {'fcmToken': newToken});
       }
     });
-    // Show snackbar for foreground messages
+    // Show in-app popup for foreground FCM messages (fallback for push)
     FirebaseMessaging.onMessage.listen((message) {
       if (!mounted) return;
       final title = message.notification?.title ?? '';
       final body = message.notification?.body ?? '';
       if (title.isEmpty && body.isEmpty) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$title: $body'),
-          backgroundColor: AppTheme.violet,
-          duration: const Duration(seconds: 4),
-        ),
-      );
+      NotificationService().show(InAppNotification(
+        title: title,
+        body: body,
+        type: NotifType.newMessage,
+      ));
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _pendingSub?.cancel();
+    _acceptedSub?.cancel();
+    _chatsSub?.cancel();
     super.dispose();
   }
 

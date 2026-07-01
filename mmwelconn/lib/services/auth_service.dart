@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
+import 'package:mmwelconn/services/notification_service.dart';
 
 String _generateMmId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -47,6 +48,12 @@ class AuthService {
         lastActive: DateTime.now(),
       ));
       await _auth.signOut();
+      // Trigger welcome notification after successful registration
+      NotificationService().show(InAppNotification(
+        title: 'Welcome to MMWELCONN! 🎉',
+        body: 'Your account is ready. Start connecting with people!',
+        type: NotifType.welcome,
+      ));
     }
     return user;
   }
