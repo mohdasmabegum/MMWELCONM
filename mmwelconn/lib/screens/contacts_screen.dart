@@ -524,7 +524,7 @@ class _PendingListState extends State<_PendingList> {
                     } catch (e) {
                       if (mounted) setState(() => _processing.remove(c.contactUid));
                       messenger.showSnackBar(
-                        SnackBar(content: Text('Failed to accept: $e')),
+                        SnackBar(content: Text('Step failed: $e')),
                       );
                     }
                   },

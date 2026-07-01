@@ -116,13 +116,13 @@ class FirestoreService {
     final contactOwnerRef = _db
         .collection('users').doc(contactUid).collection('contacts').doc(ownerUid);
 
-    // Batch 1: update both contact statuses
-    final contactBatch = _db.batch();
-    contactBatch.update(ownerContactRef, {'status': ContactStatus.accepted.name});
-    contactBatch.update(contactOwnerRef, {'status': ContactStatus.accepted.name});
-    await contactBatch.commit();
+    // Step 1: update acceptor's own contact doc
+    await ownerContactRef.update({'status': ContactStatus.accepted.name});
 
-    // Batch 2: create chat doc first, then message (chat must exist before message rule runs)
+    // Step 2: update sender's contact doc (allowed because contactUid field == request.auth.uid)
+    await contactOwnerRef.update({'status': ContactStatus.accepted.name});
+
+    // Step 3: create chat doc
     await chatRef.set({
       'chatType': ChatType.direct.name,
       'participantIds': [ownerUid, contactUid],
@@ -133,6 +133,7 @@ class FirestoreService {
       'lastMessageAt': now,
     }, SetOptions(merge: true));
 
+    // Step 4: add welcome message (chat doc now exists so rule get() succeeds)
     await chatRef.collection('messages').add({
       'senderId': ownerUid,
       'senderName': ownerName,
