@@ -47,3 +47,13 @@ app.*.map.json
 # Keystore and local signing configuration
 key.properties
 *.jks
+
+# Node
+node_modules/
+package.json
+package-lock.json
+
+# Scripts not for version control
+set_version.js
+post_deploy_check.js
+{
