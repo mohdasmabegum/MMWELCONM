@@ -130,13 +130,13 @@ class FirestoreService {
       'participantNames': {ownerUid: ownerName, contactUid: contactName},
       'unreadCount': {ownerUid: 0, contactUid: 1},
       'lastMessage': '🎉 You are now connected! Let\'s start a new chat',
-      'lastSenderId': 'system',
+      'lastSenderId': ownerUid,
       'lastMessageAt': now,
     }, SetOptions(merge: true));
 
     batch.set(msgRef, {
-      'senderId': 'system',
-      'senderName': 'System',
+      'senderId': ownerUid,
+      'senderName': ownerName,
       'text': '🎉 You are now connected! Let\'s start a new chat',
       'createdAt': now,
     });

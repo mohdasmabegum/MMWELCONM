@@ -520,12 +520,12 @@ class _PendingListState extends State<_PendingList> {
                     setState(() => _processing.add(c.contactUid));
                     try {
                       await widget.fs.acceptContact(widget.uid, c.contactUid);
+                      // Keep in _processing — stream update will remove it from the list
                     } catch (e) {
+                      if (mounted) setState(() => _processing.remove(c.contactUid));
                       messenger.showSnackBar(
                         SnackBar(content: Text('Failed to accept: $e')),
                       );
-                    } finally {
-                      if (mounted) setState(() => _processing.remove(c.contactUid));
                     }
                   },
                 ),
@@ -537,11 +537,10 @@ class _PendingListState extends State<_PendingList> {
                     try {
                       await widget.fs.declineContact(widget.uid, c.contactUid);
                     } catch (e) {
+                      if (mounted) setState(() => _processing.remove(c.contactUid));
                       messenger.showSnackBar(
                         SnackBar(content: Text('Failed to decline: $e')),
                       );
-                    } finally {
-                      if (mounted) setState(() => _processing.remove(c.contactUid));
                     }
                   },
                 ),
