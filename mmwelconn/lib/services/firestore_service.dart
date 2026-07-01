@@ -109,7 +109,6 @@ class FirestoreService {
     final ids = [ownerUid, contactUid]..sort();
     final chatId = ids.join('_');
     final chatRef = _db.collection('chats').doc(chatId);
-    final msgRef = chatRef.collection('messages').doc();
     final now = FieldValue.serverTimestamp();
 
     final ownerContactRef = _db
@@ -117,14 +116,14 @@ class FirestoreService {
     final contactOwnerRef = _db
         .collection('users').doc(contactUid).collection('contacts').doc(ownerUid);
 
-    final batch = _db.batch();
+    // Batch 1: update both contact statuses
+    final contactBatch = _db.batch();
+    contactBatch.update(ownerContactRef, {'status': ContactStatus.accepted.name});
+    contactBatch.update(contactOwnerRef, {'status': ContactStatus.accepted.name});
+    await contactBatch.commit();
 
-    // Update status directly — rules allow contactUid to update ownerUid's doc
-    batch.update(ownerContactRef, {'status': ContactStatus.accepted.name});
-    batch.update(contactOwnerRef, {'status': ContactStatus.accepted.name});
-
-    // Create or merge the chat doc with system welcome message
-    batch.set(chatRef, {
+    // Batch 2: create chat doc first, then message (chat must exist before message rule runs)
+    await chatRef.set({
       'chatType': ChatType.direct.name,
       'participantIds': [ownerUid, contactUid],
       'participantNames': {ownerUid: ownerName, contactUid: contactName},
@@ -134,14 +133,12 @@ class FirestoreService {
       'lastMessageAt': now,
     }, SetOptions(merge: true));
 
-    batch.set(msgRef, {
+    await chatRef.collection('messages').add({
       'senderId': ownerUid,
       'senderName': ownerName,
       'text': '🎉 You are now connected! Let\'s start a new chat',
       'createdAt': now,
     });
-
-    await batch.commit();
   }
 
   Future<void> declineContact(String ownerUid, String contactUid) {
