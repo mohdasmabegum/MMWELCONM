@@ -13,7 +13,7 @@ import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
-const String _currentVersion = '1.1.0';
+const _currentVersion = '1.2.1';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -304,7 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     fontSize: 20,
                     color: AppTheme.ink)),
             const SizedBox(height: 6),
-            Text('Version 1.0.0',
+            Text('Version $_currentVersion',
                 style: TextStyle(
                     color: AppTheme.ink.withValues(alpha: 0.5),
                     fontSize: 13)),
@@ -681,7 +681,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingsTile(
               icon: Icons.info_outline_rounded,
               label: 'About MMWELCONN',
-              subtitle: 'Version 1.0.0',
+              subtitle: 'Version $_currentVersion',
               color: AppTheme.violet,
               onTap: _showAbout,
             ),
@@ -956,6 +956,7 @@ class _AppUpdatesTileState extends State<_AppUpdatesTile> {
 
   String get _latestVersion => _versionData['latest'] ?? _currentVersion;
   String get _releaseNotes => _versionData['releaseNotes'] ?? 'No release notes available.';
+  String get _releaseDate => _versionData['releaseDate'] ?? '';
   bool get _hasUpdate => _latestVersion != _currentVersion;
 
   void _showUpdateDialog() {
@@ -1088,6 +1089,11 @@ class _AppUpdatesTileState extends State<_AppUpdatesTile> {
                           fontWeight: _hasUpdate ? FontWeight.w700 : FontWeight.normal,
                         ),
                       ),
+                      if (_releaseDate.isNotEmpty)
+                        Text(
+                          'Released: $_releaseDate',
+                          style: TextStyle(fontSize: 11, color: AppTheme.ink.withValues(alpha: 0.35)),
+                        ),
                     ],
                   ),
                 ),

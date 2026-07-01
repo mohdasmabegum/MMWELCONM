@@ -14,6 +14,8 @@ import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
+const String _appVersion = '1.2.1';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -40,6 +42,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _initFcm();
     _initNotificationListeners();
+    _checkForUpdate();
+  }
+
+  Future<void> _checkForUpdate() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    // Wait a moment so the UI is fully loaded
+    await Future.delayed(const Duration(seconds: 2));
+    final versionData = await _fs.watchAppVersion().first;
+    final latest = versionData['latest'] ?? _appVersion;
+    final releaseNotes = versionData['releaseNotes'] ?? '';
+    final releaseDate = versionData['releaseDate'] ?? '';
+    if (latest != _appVersion) {
+      final user = await _fs.getUser(uid);
+      final autoUpdate = user?.autoUpdate ?? true;
+      NotificationService().show(InAppNotification(
+        title: autoUpdate ? 'Update Available 🚀 v$latest' : 'New Update v$latest',
+        body: '${autoUpdate ? 'Auto-updating — ' : 'Tap to update — '}${releaseDate.isNotEmpty ? 'Released $releaseDate. ' : ''}$releaseNotes'.trim(),
+        type: NotifType.welcome,
+        onTap: () => setState(() => _selectedIndex = 3),
+      ));
+    }
   }
 
   void _initNotificationListeners() {
