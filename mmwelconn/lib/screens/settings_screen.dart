@@ -13,7 +13,7 @@ import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
-const _currentVersion = '1.2.1';
+const _currentVersion = '1.2.2';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -681,7 +681,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingsTile(
               icon: Icons.info_outline_rounded,
               label: 'About MMWELCONN',
-              subtitle: 'Version $_currentVersion',
+              subtitle: 'Version 1.2.2',
               color: AppTheme.violet,
               onTap: _showAbout,
             ),

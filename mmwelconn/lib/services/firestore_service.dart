@@ -100,7 +100,7 @@ class FirestoreService {
     await batch.commit();
   }
 
-  Future<void> acceptContact(String ownerUid, String contactUid) async {
+  Future<String> acceptContact(String ownerUid, String contactUid) async {
     final ownerDoc = await _db.collection('users').doc(ownerUid).get();
     final contactDoc = await _db.collection('users').doc(contactUid).get();
     final ownerName = (ownerDoc.data() ?? {})['name'] ?? '';
@@ -109,37 +109,24 @@ class FirestoreService {
     final ids = [ownerUid, contactUid]..sort();
     final chatId = ids.join('_');
     final chatRef = _db.collection('chats').doc(chatId);
-    final now = FieldValue.serverTimestamp();
 
     final ownerContactRef = _db
         .collection('users').doc(ownerUid).collection('contacts').doc(contactUid);
     final contactOwnerRef = _db
         .collection('users').doc(contactUid).collection('contacts').doc(ownerUid);
 
-    // Step 1: update acceptor's own contact doc
     await ownerContactRef.update({'status': ContactStatus.accepted.name});
-
-    // Step 2: update sender's contact doc (allowed because contactUid field == request.auth.uid)
     await contactOwnerRef.update({'status': ContactStatus.accepted.name});
 
-    // Step 3: create chat doc
+    // Create empty chat doc — no auto message
     await chatRef.set({
       'chatType': ChatType.direct.name,
       'participantIds': [ownerUid, contactUid],
       'participantNames': {ownerUid: ownerName, contactUid: contactName},
-      'unreadCount': {ownerUid: 0, contactUid: 1},
-      'lastMessage': '🎉 You are now connected! Let\'s start a new chat',
-      'lastSenderId': ownerUid,
-      'lastMessageAt': now,
+      'unreadCount': {ownerUid: 0, contactUid: 0},
     }, SetOptions(merge: true));
 
-    // Step 4: add welcome message (chat doc now exists so rule get() succeeds)
-    await chatRef.collection('messages').add({
-      'senderId': ownerUid,
-      'senderName': ownerName,
-      'text': '🎉 You are now connected! Let\'s start a new chat',
-      'createdAt': now,
-    });
+    return chatId;
   }
 
   Future<void> declineContact(String ownerUid, String contactUid) {
@@ -251,8 +238,11 @@ class FirestoreService {
       for (final uid in allParticipantIds.where((id) => id != msg.senderId))
         'unreadCount.$uid': FieldValue.increment(1)
     };
+    final lastMessage = msg.imageUrl != null && msg.text.isEmpty
+        ? '📷 Photo'
+        : msg.text;
     batch.update(_db.collection('chats').doc(chatId), {
-      'lastMessage': msg.text,
+      'lastMessage': lastMessage,
       'lastSenderId': msg.senderId,
       'lastMessageAt': FieldValue.serverTimestamp(),
       ...unreadIncrements,

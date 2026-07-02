@@ -14,7 +14,7 @@ import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
-const String _appVersion = '1.2.1';
+const String _appVersion = '1.2.2';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -277,13 +277,10 @@ class _HomePageState extends State<_HomePage> {
     super.dispose();
   }
 
-  void _showMoodSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _MoodSheet(userModel: _userModel),
-    );
+  Future<void> _toggleStatus(bool isOnline) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await FirestoreService().setUserStatus(uid, isOnline ? 'online' : 'offline');
   }
 
   @override
@@ -305,14 +302,17 @@ class _HomePageState extends State<_HomePage> {
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _TopHero(displayName: displayName, userModel: _userModel),
                         const SizedBox(height: 26),
-                        _StatsRow(userModel: _userModel),
+                        _StatsRow(
+                          userModel: _userModel,
+                          onToggleStatus: _toggleStatus,
+                        ),
                         const SizedBox(height: 26),
                         _QuickActions(
                           onStartChat: widget.onGoToChats,
-                          onShareMood: _showMoodSheet,
                           onAddContact: widget.onGoToContacts,
                         ),
                       ],
@@ -483,7 +483,12 @@ class _TopHero extends StatelessWidget {
 
 class _StatsRow extends StatefulWidget {
   final UserModel? userModel;
-  const _StatsRow({required this.userModel});
+  final ValueChanged<bool> onToggleStatus;
+
+  const _StatsRow({
+    required this.userModel,
+    required this.onToggleStatus,
+  });
 
   @override
   State<_StatsRow> createState() => _StatsRowState();
@@ -501,10 +506,18 @@ class _StatsRowState extends State<_StatsRow> {
     _watchedMoodId = moodId;
     if (moodId != null) {
       _moodSub = _fs.watchMoodById(moodId).listen((m) {
-        if (mounted) setState(() => _currentMood = m);
+        if (!mounted) return;
+        // Auto-clear mood if older than 24 hours
+        if (m != null && DateTime.now().difference(m.createdAt).inHours >= 24) {
+          final uid = widget.userModel?.uid;
+          if (uid != null) _fs.clearCurrentMood(uid);
+          setState(() => _currentMood = null);
+        } else {
+          setState(() => _currentMood = m);
+        }
       });
     } else {
-      setState(() => _currentMood = null);
+      if (mounted) setState(() => _currentMood = null);
     }
   }
 
@@ -520,6 +533,44 @@ class _StatsRowState extends State<_StatsRow> {
     _subscribeMood(widget.userModel?.currentMoodId);
   }
 
+  bool _moodExpanded = false;
+  String? _pendingEmoji;
+  String? _pendingLabel;
+  bool _posting = false;
+
+  static const _moods = [
+    ('😊', 'Happy'), ('😔', 'Sad'), ('😌', 'Calm'), ('😤', 'Frustrated'),
+    ('🥳', 'Excited'), ('😴', 'Tired'), ('🤩', 'Inspired'), ('😰', 'Anxious'),
+  ];
+
+  Future<void> _postMood() async {
+    if (_pendingEmoji == null) return;
+    final uid = widget.userModel?.uid;
+    if (uid == null) return;
+    setState(() => _posting = true);
+    try {
+      final moodId = await _fs.postMood(MoodModel(
+        id: '',
+        userId: uid,
+        userDisplayName: widget.userModel?.name ?? '',
+        userPhotoUrl: widget.userModel?.profilePicture ?? '',
+        emoji: _pendingEmoji!,
+        label: _pendingLabel!,
+        isPublic: true,
+        createdAt: DateTime.now(),
+      ));
+      await _fs.updateUser(uid, {'currentMoodId': moodId});
+      if (!mounted) return;
+      setState(() { _moodExpanded = false; _pendingEmoji = null; _pendingLabel = null; });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Mood updated ✓'), backgroundColor: AppTheme.violet),
+      );
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _posting = false);
+    }
+  }
+
   @override
   void dispose() {
     _moodSub?.cancel();
@@ -528,46 +579,193 @@ class _StatsRowState extends State<_StatsRow> {
 
   @override
   Widget build(BuildContext context) {
+    final isOnline = widget.userModel?.status == 'online';
     final moodDisplay = _currentMood != null
         ? '${_currentMood!.emoji} ${_currentMood!.label}'
         : widget.userModel?.currentMoodId != null ? '...' : 'None';
 
-    final tiles = [
-      ('Status', widget.userModel?.status.toUpperCase() ?? '...', AppTheme.sky, Icons.circle),
-      ('Mood', moodDisplay, AppTheme.violet, Icons.favorite_rounded),
-    ];
-
-    return Wrap(
-      spacing: 14,
-      runSpacing: 14,
-      children: tiles.map((tile) => HoverCard(
-        child: Container(
-          width: 160,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            color: Colors.white.withValues(alpha: 0.7),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 700),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Wrap(
+            spacing: 14,
+            runSpacing: 14,
+            alignment: WrapAlignment.center,
             children: [
-              Icon(tile.$4, color: tile.$3),
-              const SizedBox(height: 18),
-              Text(tile.$1,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.ink.withValues(alpha: 0.62),
-                      )),
-              const SizedBox(height: 6),
-              Text(tile.$2,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.ink,
-                        fontSize: 16,
-                      )),
+              // Status tile with toggle
+              HoverCard(
+                child: Container(
+                  width: 160,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Icon(Icons.circle, color: isOnline ? Colors.green : Colors.grey, size: 20),
+                          Transform.scale(
+                            scale: 0.75,
+                            child: Switch(
+                              value: isOnline,
+                              onChanged: widget.userModel != null ? widget.onToggleStatus : null,
+                              activeThumbColor: Colors.green,
+                              activeTrackColor: Colors.green.withValues(alpha: 0.3),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Status',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.ink.withValues(alpha: 0.62),
+                              )),
+                      const SizedBox(height: 4),
+                      Text(
+                        isOnline ? 'ONLINE' : 'OFFLINE',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: isOnline ? Colors.green : Colors.grey,
+                              fontSize: 14,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Mood tile — tap to expand picker
+              GestureDetector(
+                onTap: () => setState(() => _moodExpanded = !_moodExpanded),
+                child: HoverCard(
+                  child: Container(
+                    width: 160,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      color: _moodExpanded
+                          ? AppTheme.violet.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.7),
+                      border: _moodExpanded
+                          ? Border.all(color: AppTheme.violet.withValues(alpha: 0.3))
+                          : null,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Icon(Icons.favorite_rounded, color: AppTheme.violet, size: 20),
+                            Icon(
+                              _moodExpanded ? Icons.expand_less_rounded : Icons.edit_rounded,
+                              size: 16,
+                              color: AppTheme.violet.withValues(alpha: 0.7),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Mood',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: AppTheme.ink.withValues(alpha: 0.62),
+                                )),
+                        const SizedBox(height: 4),
+                        Text(
+                          moodDisplay,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.ink,
+                                fontSize: 14,
+                              ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
-        ),
-      )).toList(),
+          // Inline mood picker — expands below tiles
+          AnimatedSize(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            child: _moodExpanded
+                ? Container(
+                    margin: const EdgeInsets.only(top: 14),
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.82),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppTheme.violet.withValues(alpha: 0.18)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text('How are you feeling?',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 15, color: AppTheme.ink)),
+                        const SizedBox(height: 14),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: _moods.map((m) {
+                            final sel = _pendingEmoji == m.$1;
+                            return GestureDetector(
+                              onTap: () => setState(() { _pendingEmoji = m.$1; _pendingLabel = m.$2; }),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: sel ? AppTheme.violet.withValues(alpha: 0.15) : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: sel ? AppTheme.violet : Colors.transparent, width: 2),
+                                ),
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  Text(m.$1, style: const TextStyle(fontSize: 18)),
+                                  const SizedBox(width: 5),
+                                  Text(m.$2,
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: sel ? AppTheme.violet : AppTheme.ink.withValues(alpha: 0.7))),
+                                ]),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _pendingEmoji == null || _posting ? null : _postMood,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.violet,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppTheme.violet.withValues(alpha: 0.35),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              elevation: 0,
+                            ),
+                            child: Text(_posting ? 'Updating...' : 'Update Mood',
+                                style: const TextStyle(fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -576,12 +774,10 @@ class _StatsRowState extends State<_StatsRow> {
 
 class _QuickActions extends StatelessWidget {
   final VoidCallback onStartChat;
-  final VoidCallback onShareMood;
   final VoidCallback onAddContact;
 
   const _QuickActions({
     required this.onStartChat,
-    required this.onShareMood,
     required this.onAddContact,
   });
 
@@ -606,15 +802,6 @@ class _QuickActions extends StatelessWidget {
                   label: 'New Chat',
                   color: AppTheme.sky,
                   onTap: onStartChat,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _ActionCard(
-                  icon: Icons.favorite_rounded,
-                  label: 'Share Mood',
-                  color: AppTheme.pink,
-                  onTap: onShareMood,
                 ),
               ),
               const SizedBox(width: 12),
@@ -676,198 +863,6 @@ class _ActionCard extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.ink.withValues(alpha: 0.75))),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ── Mood bottom sheet ─────────────────────────────────────────────────────────
-
-class _MoodSheet extends StatefulWidget {
-  final UserModel? userModel;
-  const _MoodSheet({required this.userModel});
-
-  @override
-  State<_MoodSheet> createState() => _MoodSheetState();
-}
-
-class _MoodSheetState extends State<_MoodSheet> {
-  final FirestoreService _fs = FirestoreService();
-  final TextEditingController _noteCtrl = TextEditingController();
-  String? _selectedEmoji;
-  String? _selectedLabel;
-  bool _isPublic = true;
-  bool _posting = false;
-
-  static const _moods = [
-    ('😊', 'Happy'),
-    ('😔', 'Sad'),
-    ('😌', 'Calm'),
-    ('😤', 'Frustrated'),
-    ('🥳', 'Excited'),
-    ('😴', 'Tired'),
-    ('🤩', 'Inspired'),
-    ('😰', 'Anxious'),
-  ];
-
-  Future<void> _post() async {
-    if (_selectedEmoji == null) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    setState(() => _posting = true);
-    try {
-      final moodId = await _fs.postMood(MoodModel(
-        id: '',
-        userId: uid,
-        userDisplayName: widget.userModel?.name ?? '',
-        userPhotoUrl: widget.userModel?.profilePicture ?? '',
-        emoji: _selectedEmoji!,
-        label: _selectedLabel!,
-        note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
-        isPublic: _isPublic,
-        createdAt: DateTime.now(),
-      ));
-      await _fs.updateUser(uid, {'currentMoodId': moodId});
-      if (!mounted) return;
-      final emoji = _selectedEmoji;
-      final label = _selectedLabel;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Mood shared: $emoji $label ✓'),
-          backgroundColor: AppTheme.violet,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _posting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to share mood: $e')),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _noteCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-        decoration: const BoxDecoration(
-          color: Color(0xFFF6F8FF),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                      color: AppTheme.ink.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(999))),
-            ),
-            const SizedBox(height: 16),
-            const Text('How are you feeling?',
-                style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: AppTheme.ink)),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: _moods.map((m) {
-                final selected = _selectedEmoji == m.$1;
-                return GestureDetector(
-                  onTap: () => setState(() {
-                    _selectedEmoji = m.$1;
-                    _selectedLabel = m.$2;
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppTheme.violet.withValues(alpha: 0.15)
-                          : Colors.white.withValues(alpha: 0.8),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                          color: selected
-                              ? AppTheme.violet
-                              : Colors.transparent,
-                          width: 2),
-                    ),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      Text(m.$1, style: const TextStyle(fontSize: 20)),
-                      const SizedBox(width: 6),
-                      Text(m.$2,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                              color: selected
-                                  ? AppTheme.violet
-                                  : AppTheme.ink.withValues(alpha: 0.7))),
-                    ]),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _noteCtrl,
-              maxLines: 2,
-              decoration: InputDecoration(
-                hintText: 'Add a note (optional)...',
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.9),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Switch(
-                  value: _isPublic,
-                  onChanged: (v) => setState(() => _isPublic = v),
-                  activeThumbColor: AppTheme.violet,
-                ),
-                const SizedBox(width: 8),
-                Text(_isPublic ? 'Visible to everyone' : 'Only me',
-                    style: TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.ink.withValues(alpha: 0.6))),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _selectedEmoji == null || _posting ? null : _post,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.violet,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: AppTheme.violet.withValues(alpha: 0.4),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                elevation: 0,
-              ),
-              child: Text(_posting ? 'Sharing...' : 'Share Mood',
-                  style: const TextStyle(fontWeight: FontWeight.w800)),
-            ),
           ],
         ),
       ),
