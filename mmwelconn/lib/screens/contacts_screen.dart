@@ -517,10 +517,28 @@ class _PendingListState extends State<_PendingList> {
                   icon: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
                   onPressed: () async {
                     final messenger = ScaffoldMessenger.of(context);
+                    final navigator = Navigator.of(context);
                     setState(() => _processing.add(c.contactUid));
                     try {
-                      await widget.fs.acceptContact(widget.uid, c.contactUid);
-                      // Keep in _processing — stream update will remove it from the list
+                      final chatId = await widget.fs.acceptContact(widget.uid, c.contactUid);
+                      final chat = await widget.fs.getChat(chatId);
+                      if (!mounted) return;
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Connected with ${c.contactName} ✓'),
+                          action: chat != null
+                              ? SnackBarAction(
+                                  label: 'Say Hello 👋',
+                                  textColor: Colors.white,
+                                  onPressed: () => navigator.push(buildPageRoute(
+                                    ChatDetailScreen(chat: chat, currentUid: widget.uid),
+                                  )),
+                                )
+                              : null,
+                          duration: const Duration(seconds: 5),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
                     } catch (e) {
                       if (mounted) setState(() => _processing.remove(c.contactUid));
                       messenger.showSnackBar(
@@ -622,24 +640,141 @@ class _DeviceContactsListState extends State<_DeviceContactsList> {
   List<fc.Contact> _contacts = [];
   bool _loading = false;
   bool _permissionDenied = false;
+  bool _permissionPermanentlyDenied = false;
   String _filter = '';
 
-  Future<void> _loadContacts() async {
-    setState(() => _loading = true);
-    final granted = await fc.FlutterContacts.requestPermission();
-    if (!granted) {
-      setState(() { _loading = false; _permissionDenied = true; });
-      return;
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissionAndLoad();
+  }
+
+  Future<void> _checkPermissionAndLoad() async {
+    // Check if permission was already granted without prompting
+    final already = await fc.FlutterContacts.requestPermission(readonly: true);
+    if (already) {
+      _loadContacts();
     }
-    final contacts = await fc.FlutterContacts.getContacts(withProperties: true);
-    if (mounted) setState(() { _contacts = contacts; _loading = false; });
+    // else: wait for user to tap the button
+  }
+
+  Future<void> _loadContacts() async {
+    setState(() { _loading = true; _permissionDenied = false; _permissionPermanentlyDenied = false; });
+    final granted = await fc.FlutterContacts.requestPermission(readonly: true);
+    if (!granted) {
+      // Check if permanently denied by requesting again — if still denied, it's permanent
+      final second = await fc.FlutterContacts.requestPermission(readonly: true);
+      if (!second) {
+        setState(() { _loading = false; _permissionPermanentlyDenied = true; });
+        return;
+      }
+    }
+    try {
+      final contacts = await fc.FlutterContacts.getContacts(withProperties: true);
+      if (mounted) setState(() { _contacts = contacts; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _permissionDenied = true; });
+    }
+  }
+
+  void _openAppSettings() {
+    // Show dialog guiding user to settings
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Contacts Permission',
+            style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.ink)),
+        content: const Text(
+          'Contacts permission was denied.\n\nTo enable it:\n1. Open your phone Settings\n2. Go to Apps → MMWELCONN\n3. Tap Permissions → Contacts → Allow',
+          style: TextStyle(height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _loadContacts();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.violet,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
-    if (_contacts.isEmpty && !_permissionDenied) {
+    if (_permissionPermanentlyDenied) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.no_cell_rounded, size: 48, color: AppTheme.ink.withValues(alpha: 0.2)),
+          const SizedBox(height: 12),
+          Text('Permission Denied',
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink.withValues(alpha: 0.5))),
+          const SizedBox(height: 6),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(
+              'Go to Settings → Apps → MMWELCONN → Permissions → Contacts → Allow',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.4)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _loadContacts,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text('Try Again', style: TextStyle(fontWeight: FontWeight.w800)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.violet,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ]),
+      );
+    }
+
+    if (_permissionDenied) {
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(Icons.contacts_rounded, size: 48, color: AppTheme.ink.withValues(alpha: 0.2)),
+          const SizedBox(height: 12),
+          Text('Permission Required',
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink.withValues(alpha: 0.5))),
+          const SizedBox(height: 6),
+          Text('Allow MMWELCONN to access your contacts',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.35))),
+          const SizedBox(height: 20),
+          ElevatedButton.icon(
+            onPressed: _loadContacts,
+            icon: const Icon(Icons.contacts_rounded),
+            label: const Text('Grant Permission', style: TextStyle(fontWeight: FontWeight.w800)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.violet,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ]),
+      );
+    }
+
+    if (_contacts.isEmpty) {
       return Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.contacts_rounded, size: 56, color: AppTheme.ink.withValues(alpha: 0.2)),
