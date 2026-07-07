@@ -1,27 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:mmwelconn/firebase_options.dart';
 import 'package:mmwelconn/screens/auth_landing_screen.dart';
 import 'package:mmwelconn/screens/home_screen.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/screens/register_screen.dart';
 import 'package:mmwelconn/screens/splash_screen.dart';
-import 'package:mmwelconn/services/notification_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(const MyApp());
 }
 
@@ -37,7 +28,11 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      home: const NotificationOverlay(child: SplashFlow()),
+      routes: {
+        '/login': (_) => const LoginScreen(),
+        '/register': (_) => const RegisterScreen(),
+      },
+      home: const SplashFlow(),
     );
   }
 }
@@ -70,38 +65,58 @@ class _SplashFlowState extends State<SplashFlow> {
   }
 }
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          );
-        }
-        if (snap.data != null) return const HomeScreen();
-        // Pop all pushed routes (Login/Register) so we land cleanly on AuthLandingScreen
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          final nav = Navigator.of(context);
-          if (nav.canPop()) nav.popUntil((route) => route.isFirst);
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _isLoggedIn = false;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      if (!mounted) return;
+      final loggedIn = user != null;
+      if (loggedIn && !_isLoggedIn) {
+        // Delay navigation so any popup on the stack can finish first
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) setState(() => _isLoggedIn = true);
         });
-        return AuthLandingScreen(
-          onLoginTap: () => Navigator.of(context).push(
-            buildPageRoute(const LoginScreen()),
+      } else if (!loggedIn && _isLoggedIn) {
+        setState(() => _isLoggedIn = false);
+      } else if (!_ready) {
+        setState(() {
+          _isLoggedIn = loggedIn;
+          _ready = true;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).colorScheme.primary,
           ),
-          onRegisterTap: () => Navigator.of(context).push(
-            buildPageRoute(const RegisterScreen()),
-          ),
-        );
-      },
+        ),
+      );
+    }
+
+    if (_isLoggedIn) {
+      return const HomeScreen();
+    }
+
+    return AuthLandingScreen(
+      onLoginTap: () => Navigator.of(context).pushNamed('/login'),
+      onRegisterTap: () => Navigator.of(context).pushNamed('/register'),
     );
   }
 }
