@@ -85,8 +85,9 @@ class _GlowBlob extends StatelessWidget {
 
 class BrandLogo extends StatefulWidget {
   final double size;
+  final bool circular;
 
-  const BrandLogo({super.key, this.size = 260});
+  const BrandLogo({super.key, this.size = 260, this.circular = false});
 
   @override
   State<BrandLogo> createState() => _BrandLogoState();
@@ -131,7 +132,8 @@ class _BrandLogoState extends State<BrandLogo> with SingleTickerProviderStateMix
         height: size,
         padding: EdgeInsets.all(size * 0.13),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(size * 0.24),
+          shape: widget.circular ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: widget.circular ? null : BorderRadius.circular(size * 0.24),
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -153,7 +155,8 @@ class _BrandLogoState extends State<BrandLogo> with SingleTickerProviderStateMix
         ),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(size * 0.17),
+            shape: widget.circular ? BoxShape.circle : BoxShape.rectangle,
+            borderRadius: widget.circular ? null : BorderRadius.circular(size * 0.17),
             color: Colors.white.withValues(alpha: 0.78),
           ),
           padding: EdgeInsets.all(size * 0.1),

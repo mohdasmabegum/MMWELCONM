@@ -97,7 +97,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Center(child: BrandLogo(size: 180)),
+                            const Center(child: BrandLogo(size: 180, circular: true)),
                             const SizedBox(height: 18),
                             Text(
                               'Create account',

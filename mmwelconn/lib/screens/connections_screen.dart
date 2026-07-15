@@ -269,6 +269,7 @@ class _ContactList extends StatelessWidget {
               name: c.contactName,
               photoUrl: c.contactPhotoUrl,
               subtitle: subtitle,
+              relation: _pretty(c.relationshipType.name),
               detail: 'Connected on ${_formatDate(c.addedAt)}',
               status: status == ContactStatus.accepted ? 'Connection' : subtitle,
               onTap: () => Navigator.of(context).push(
@@ -293,12 +294,13 @@ class _ContactTile extends StatelessWidget {
   final String name;
   final String photoUrl;
   final String subtitle;
+  final String? relation;
   final String? detail;
   final String? status;
   final VoidCallback? onTap;
   final Widget? trailing;
 
-  const _ContactTile({required this.name, required this.photoUrl, required this.subtitle, this.detail, this.status, this.onTap, this.trailing});
+  const _ContactTile({required this.name, required this.photoUrl, required this.subtitle, this.relation, this.detail, this.status, this.onTap, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -325,6 +327,8 @@ class _ContactTile extends StatelessWidget {
               children: [
                 Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink)),
                 Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.5))),
+                if (relation != null)
+                  Text('Relation: $relation', style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.48))),
                 if (detail != null)
                   Text(detail!, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45))),
                 if (status != null)

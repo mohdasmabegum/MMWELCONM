@@ -178,6 +178,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppTheme.ink.withValues(alpha: 0.62)),
                           ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'MM ID: ${user.mmId}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppTheme.ink.withValues(alpha: 0.72),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Wrap(
                             spacing: 10,
@@ -188,6 +197,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 icon: user.status == 'online' ? Icons.wifi_rounded : Icons.wifi_off_rounded,
                                 label: user.status == 'online' ? 'Online' : 'Offline',
                                 color: user.status == 'online' ? Colors.green : Colors.grey,
+                              ),
+                              _InfoChip(
+                                icon: Icons.badge_rounded,
+                                label: user.mmId,
+                                color: AppTheme.sky,
                               ),
                               if (hasMood)
                                 _InfoChip(
@@ -276,7 +290,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 12),
                             _DetailRow(label: 'Type', value: _pretty(contact.relationshipType.name)),
-                            _DetailRow(label: 'Started', value: _formatDate(contact.addedAt)),
                             _DetailRow(label: 'Relation status', value: _pretty(contact.status.name)),
                             _DetailRow(label: 'Current status', value: _pretty(user.status)),
                           ],
@@ -343,12 +356,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       value.isEmpty ? 'Unknown' : value[0].toUpperCase() + value.substring(1);
 
   String _shortDate(DateTime date) => '${date.day}/${date.month}/${date.year}';
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    return '$day/$month/${date.year}';
-  }
 }
 
 class _InfoChip extends StatelessWidget {

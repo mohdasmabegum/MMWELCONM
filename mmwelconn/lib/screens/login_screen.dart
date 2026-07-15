@@ -114,7 +114,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Center(child: BrandLogo(size: 180)),
+                            const Center(child: BrandLogo(size: 180, circular: true)),
                             const SizedBox(height: 18),
                             Text(
                               'Welcome back',
@@ -175,4 +175,30 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       ),
     );
   }
+}
+
+/// Placeholder for a success dialog.
+Future<void> showAuthSuccess(
+  BuildContext context, {
+  required String title,
+  required String subtitle,
+  required List<Color> colors,
+}) {
+  return showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(subtitle),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('OK'),
+        ),
+      ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      backgroundColor: Colors.white,
+      titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
+      contentTextStyle: const TextStyle(color: Colors.black87, fontSize: 16),
+    ),
+  );
 }
