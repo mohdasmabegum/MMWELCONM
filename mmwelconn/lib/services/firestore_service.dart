@@ -404,4 +404,32 @@ class FirestoreService {
 
   Future<void> updateAutoUpdate(String uid, bool enabled) =>
       _db.collection('users').doc(uid).update({'autoUpdate': enabled});
+
+  Future<void> markMessagesAsDelivered(String chatId, String currentUid) async {
+    final snap = await _db.collection('chats').doc(chatId).collection('messages')
+        .where('senderId', isNotEqualTo: currentUid)
+        .where('status', isEqualTo: 'sent')
+        .get();
+    if (snap.docs.isNotEmpty) {
+      final batch = _db.batch();
+      for (var doc in snap.docs) {
+        batch.update(doc.reference, {'status': 'delivered'});
+      }
+      await batch.commit();
+    }
+  }
+
+  Future<void> markMessagesAsSeen(String chatId, String currentUid) async {
+    final snap = await _db.collection('chats').doc(chatId).collection('messages')
+        .where('senderId', isNotEqualTo: currentUid)
+        .where('status', isNotEqualTo: 'seen')
+        .get();
+    if (snap.docs.isNotEmpty) {
+      final batch = _db.batch();
+      for (var doc in snap.docs) {
+        batch.update(doc.reference, {'status': 'seen'});
+      }
+      await batch.commit();
+    }
+  }
 }

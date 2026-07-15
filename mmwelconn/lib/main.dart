@@ -7,6 +7,7 @@ import 'package:mmwelconn/screens/home_screen.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/screens/register_screen.dart';
 import 'package:mmwelconn/screens/splash_screen.dart';
+import 'package:mmwelconn/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,6 +29,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
+      builder: (context, child) => NotificationOverlay(child: child!),
       routes: {
         '/login': (_) => const LoginScreen(),
         '/register': (_) => const RegisterScreen(),

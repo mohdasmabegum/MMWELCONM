@@ -144,7 +144,7 @@ class _PhotosScreenState extends State<PhotosScreen> {
                   Text(
                     'My Photos',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.normal,
                           color: AppTheme.ink,
                         ),
                   ),

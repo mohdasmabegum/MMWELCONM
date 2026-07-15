@@ -67,6 +67,7 @@ class MessageModel {
   final String senderName;
   final String text;
   final String? imageUrl;
+  final String status;
   final DateTime createdAt;
 
   const MessageModel({
@@ -75,6 +76,7 @@ class MessageModel {
     required this.senderName,
     required this.text,
     this.imageUrl,
+    this.status = 'sent',
     required this.createdAt,
   });
 
@@ -86,6 +88,7 @@ class MessageModel {
       senderName: d['senderName'] ?? '',
       text: d['text'] ?? '',
       imageUrl: d['imageUrl'],
+      status: d['status'] ?? 'sent',
       createdAt: d['createdAt'] != null
           ? (d['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -97,6 +100,7 @@ class MessageModel {
         'senderName': senderName,
         'text': text,
         if (imageUrl != null) 'imageUrl': imageUrl,
+        'status': status,
         'createdAt': FieldValue.serverTimestamp(),
       };
 }

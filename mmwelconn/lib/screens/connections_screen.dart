@@ -134,7 +134,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
                   Text(
                     'Connections',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
+                          fontWeight: FontWeight.normal,
                           color: AppTheme.ink,
                         ),
                   ),
@@ -499,7 +499,7 @@ class _ContactList extends StatelessWidget {
                           '${_pretty(type.name)} (${list.length})',
                           style: TextStyle(
                             fontSize: 14,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.normal,
                             color: _getRelationColor(type),
                           ),
                         ),

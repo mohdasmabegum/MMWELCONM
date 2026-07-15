@@ -12,8 +12,10 @@ import 'package:mmwelconn/screens/connections_screen.dart';
 import 'package:mmwelconn/screens/photos_screen.dart';
 import 'package:mmwelconn/screens/settings_screen.dart';
 import 'package:mmwelconn/screens/profile_screen.dart';
+import 'package:mmwelconn/screens/chat_detail_screen.dart';
 import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
+import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,10 +25,80 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
+  final FirestoreService _fs = FirestoreService();
+  StreamSubscription<List<ChatModel>>? _chatsSub;
+  final Map<String, DateTime> _lastSeenMessageTimes = {};
 
   void _goToTab(int index) => setState(() => _selectedIndex = index);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      _fs.getUser(uid).then((userDoc) {
+        if (userDoc != null) {
+          final isOnline = userDoc.showOnline;
+          _fs.setUserStatus(uid, isOnline ? 'online' : 'offline');
+        }
+      });
+
+      _chatsSub = _fs.watchMyChats(uid).listen((chats) {
+        for (var chat in chats) {
+          if (chat.lastMessage != null && chat.lastSenderId != uid) {
+            _fs.markMessagesAsDelivered(chat.id, uid);
+
+            final chatId = chat.id;
+            final lastTime = chat.lastMessageAt;
+            if (lastTime != null) {
+              final prevTime = _lastSeenMessageTimes[chatId];
+              if (prevTime != null && lastTime.isAfter(prevTime)) {
+                if (chatId != ChatDetailScreen.activeChatId) {
+                  final senderName = chat.participantNames[chat.lastSenderId] ?? 'Someone';
+                  final messageText = (chat.lastMessage != null && chat.lastMessage!.isNotEmpty)
+                      ? chat.lastMessage!
+                      : 'Sent an image 📷';
+                  NotificationService().show(InAppNotification(
+                    title: senderName,
+                    body: messageText,
+                    type: NotifType.newMessage,
+                  ));
+                }
+              }
+              _lastSeenMessageTimes[chatId] = lastTime;
+            }
+          }
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _chatsSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    
+    if (state == AppLifecycleState.resumed) {
+      _fs.getUser(uid).then((userDoc) {
+        if (userDoc != null && userDoc.showOnline) {
+          _fs.setUserStatus(uid, 'online');
+        }
+      });
+    } else {
+      _fs.setUserStatus(uid, 'offline');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,12 +175,6 @@ class _HomePageState extends State<_HomePage> {
     if (uid != null) {
       _userSub = _fs.watchUser(uid).listen((user) {
         if (mounted) setState(() => _userModel = user);
-      });
-      _fs.getUser(uid).then((userDoc) {
-        if (userDoc != null) {
-          final isOnline = userDoc.showOnline;
-          _fs.setUserStatus(uid, isOnline ? 'online' : 'offline');
-        }
       });
     }
   }

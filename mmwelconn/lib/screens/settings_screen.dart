@@ -57,7 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Text(
                           'Settings',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w900,
+                                fontWeight: FontWeight.normal,
                                 color: AppTheme.ink,
                               ),
                         ),
@@ -267,7 +267,7 @@ class _SettingsSection extends StatelessWidget {
               child: Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.normal,
                       color: AppTheme.ink,
                     ),
               ),

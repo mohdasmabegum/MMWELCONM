@@ -87,7 +87,7 @@ class BrandLogo extends StatefulWidget {
   final double size;
   final bool circular;
 
-  const BrandLogo({super.key, this.size = 260, this.circular = false});
+  const BrandLogo({super.key, this.size = 260, this.circular = true});
 
   @override
   State<BrandLogo> createState() => _BrandLogoState();
@@ -130,6 +130,7 @@ class _BrandLogoState extends State<BrandLogo> with SingleTickerProviderStateMix
       child: Container(
         width: size,
         height: size,
+        clipBehavior: Clip.antiAlias,
         padding: EdgeInsets.all(size * 0.13),
         decoration: BoxDecoration(
           shape: widget.circular ? BoxShape.circle : BoxShape.rectangle,
@@ -154,15 +155,18 @@ class _BrandLogoState extends State<BrandLogo> with SingleTickerProviderStateMix
           ],
         ),
         child: Container(
+          clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             shape: widget.circular ? BoxShape.circle : BoxShape.rectangle,
             borderRadius: widget.circular ? null : BorderRadius.circular(size * 0.17),
             color: Colors.white.withValues(alpha: 0.78),
           ),
           padding: EdgeInsets.all(size * 0.1),
-          child: Image.asset(
-            'assets/logo.png',
-            fit: BoxFit.contain,
+          child: ClipOval(
+            child: Image.asset(
+              'assets/logo.png',
+              fit: BoxFit.cover,
+            ),
           ),
         ),
       ),

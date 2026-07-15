@@ -10,6 +10,7 @@ import 'package:mmwelconn/screens/profile_screen.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class ChatDetailScreen extends StatefulWidget {
+  static String? activeChatId;
   final ChatModel chat;
   final String currentUid;
 
@@ -48,11 +49,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   @override
   void initState() {
     super.initState();
+    ChatDetailScreen.activeChatId = widget.chat.id;
     _fs.clearUnread(widget.chat.id, widget.currentUid);
+    _fs.markMessagesAsSeen(widget.chat.id, widget.currentUid);
   }
 
   @override
   void dispose() {
+    if (ChatDetailScreen.activeChatId == widget.chat.id) {
+      ChatDetailScreen.activeChatId = null;
+    }
     _msgCtrl.dispose();
     _scroll.dispose();
     super.dispose();
@@ -181,6 +187,9 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   stream: _fs.watchMessages(widget.chat.id),
                   builder: (context, snap) {
                     final msgs = snap.data ?? [];
+                    if (msgs.isNotEmpty) {
+                      _fs.markMessagesAsSeen(widget.chat.id, widget.currentUid);
+                    }
                     if (msgs.isEmpty && snap.connectionState == ConnectionState.waiting) {
                       return const Center(child: CircularProgressIndicator());
                     }
@@ -277,6 +286,50 @@ class _MessageBubble extends StatelessWidget {
 
   const _MessageBubble({required this.msg, required this.isMe});
 
+  Widget _buildStatusTicks(String status) {
+    final bool seen = status == 'seen';
+    final bool delivered = status == 'delivered' || seen;
+    
+    final Color color = seen ? const Color(0xFF00E5FF) : Colors.white.withValues(alpha: 0.7);
+    
+    if (delivered) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 1),
+            ),
+            child: Icon(Icons.check, size: 7, color: color),
+          ),
+          const SizedBox(width: 2),
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: color, width: 1),
+            ),
+            child: Icon(Icons.check, size: 7, color: color),
+          ),
+        ],
+      );
+    } else {
+      return Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: color, width: 1),
+        ),
+        child: Icon(Icons.check, size: 7, color: color),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasImage = msg.imageUrl != null && msg.imageUrl!.isNotEmpty;
@@ -306,26 +359,46 @@ class _MessageBubble extends StatelessWidget {
           ],
         ),
         child: hasImage
-            ? ClipRRect(
-                borderRadius: borderRadius,
-                child: Image.network(
-                  msg.imageUrl!,
-                  width: 200,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) => const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Icon(Icons.broken_image_rounded),
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  ClipRRect(
+                    borderRadius: borderRadius,
+                    child: Image.network(
+                      msg.imageUrl!,
+                      width: 200,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Icon(Icons.broken_image_rounded),
+                      ),
+                    ),
                   ),
-                ),
+                  if (isMe)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(0, 4, 8, 4),
+                      child: _buildStatusTicks(msg.status),
+                    ),
+                ],
               )
             : Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Text(
-                  msg.text,
-                  style: TextStyle(
-                    color: isMe ? Colors.white : AppTheme.ink,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      msg.text,
+                      style: TextStyle(
+                        color: isMe ? Colors.white : AppTheme.ink,
+                        fontSize: 15,
+                      ),
+                    ),
+                    if (isMe) ...[
+                      const SizedBox(height: 6),
+                      _buildStatusTicks(msg.status),
+                    ],
+                  ],
                 ),
               ),
       ),
