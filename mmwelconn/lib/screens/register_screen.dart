@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
@@ -46,48 +45,29 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       );
       return;
     }
-    if (_passwordController.text.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password must be at least 6 characters')),
-      );
-      return;
-    }
 
     setState(() => _loading = true);
-    try {
-      final user = await _authService.signUp(
-        _emailController.text.trim(),
-        _passwordController.text,
-        _nameController.text.trim(),
-      );
-      if (!mounted) return;
-      setState(() => _loading = false);
-      if (user != null) {
-        await showAccountCreatedDialog(
-          context,
-          onGoToLogin: () {
-            Navigator.of(context).pop();
-            if (!mounted) return;
-            Navigator.of(context).pushReplacement(buildPageRoute(const LoginScreen()));
-          },
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-      final msg = switch (e.code) {
-        'email-already-in-use' => 'An account already exists for this email.',
-        'weak-password' => 'Password is too weak. Use at least 6 characters.',
-        'invalid-email' => 'Please enter a valid email address.',
-        'network-request-failed' => 'Network error. Check your connection.',
-        _ => e.message ?? 'Registration failed. Please try again.',
-      };
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loading = false);
+    final user = await _authService.signUp(
+      _emailController.text.trim(),
+      _passwordController.text,
+      _nameController.text.trim(),
+    );
+    if (!mounted) return;
+    setState(() => _loading = false);
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('An unexpected error occurred.')),
+        const SnackBar(content: Text('Registration failed. Try again.')),
+      );
+    } else {
+      // Sign out so AuthGate doesn't auto-redirect to home
+      await _authService.logout();
+      if (!mounted) return;
+      await showAccountCreatedDialog(
+        context,
+        onGoToLogin: () {
+          Navigator.of(context).pop(); // close dialog
+          Navigator.of(context).pushReplacement(buildPageRoute(const LoginScreen()));
+        },
       );
     }
   }
@@ -184,4 +164,26 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       ),
     );
   }
+}
+
+/// Placeholder for a success dialog.
+Future<void> showAccountCreatedDialog(
+  BuildContext context, {
+  required VoidCallback onGoToLogin,
+}) {
+  return showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      title: const Text('Account Created!'),
+      content: const Text('Your account has been successfully created. Please log in to continue.'),
+      actions: [
+        TextButton(
+          onPressed: onGoToLogin,
+          child: const Text('Go to Login'),
+        ),
+      ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    ),
+  );
 }

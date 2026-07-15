@@ -1,11 +1,15 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/mood_model.dart';
 import 'package:mmwelconn/models/chat_model.dart';
+import 'package:mmwelconn/services/storage_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final StorageService _storage = StorageService();
 
   // ── Users ────────────────────────────────────────────────────────────────
 
@@ -101,10 +105,12 @@ class FirestoreService {
   }
 
   Future<String> acceptContact(String ownerUid, String contactUid) async {
-    final ownerDoc = await _db.collection('users').doc(ownerUid).get();
-    final contactDoc = await _db.collection('users').doc(contactUid).get();
-    final ownerName = (ownerDoc.data() ?? {})['name'] ?? '';
-    final contactName = (contactDoc.data() ?? {})['name'] ?? '';
+    final ownerDoc = await getUser(ownerUid);
+    final contactDoc = await getUser(contactUid);
+    final ownerName = ownerDoc?.name ?? '';
+    final contactName = contactDoc?.name ?? '';
+    final ownerPhoto = ownerDoc?.profileImageUrl ?? '';
+    final contactPhoto = contactDoc?.profileImageUrl ?? '';
 
     final ids = [ownerUid, contactUid]..sort();
     final chatId = ids.join('_');
@@ -123,6 +129,7 @@ class FirestoreService {
       'chatType': ChatType.direct.name,
       'participantIds': [ownerUid, contactUid],
       'participantNames': {ownerUid: ownerName, contactUid: contactName},
+      'participantProfileImageUrls': {ownerUid: ownerPhoto, contactUid: contactPhoto},
       'unreadCount': {ownerUid: 0, contactUid: 0},
     }, SetOptions(merge: true));
 
@@ -130,6 +137,17 @@ class FirestoreService {
   }
 
   Future<void> declineContact(String ownerUid, String contactUid) {
+    final batch = _db.batch();
+    batch.delete(
+      _db.collection('users').doc(ownerUid).collection('contacts').doc(contactUid),
+    );
+    batch.delete(
+      _db.collection('users').doc(contactUid).collection('contacts').doc(ownerUid),
+    );
+    return batch.commit();
+  }
+
+  Future<void> cancelContactRequest(String ownerUid, String contactUid) {
     final batch = _db.batch();
     batch.delete(
       _db.collection('users').doc(ownerUid).collection('contacts').doc(contactUid),
@@ -190,17 +208,20 @@ class FirestoreService {
   // ── Chats ─────────────────────────────────────────────────────────────────
 
   Future<String> getOrCreateDirectChat(
-      String myUid, String myName, String otherUid, String otherName) async {
+      String myUid, String otherUid) async {
     final ids = [myUid, otherUid]..sort();
     final chatId = ids.join('_');
     final ref = _db.collection('chats').doc(chatId);
     final doc = await ref.get();
     if (!doc.exists) {
+      final myUser = await getUser(myUid);
+      final otherUser = await getUser(otherUid);
       await ref.set(ChatModel(
         id: chatId,
         chatType: ChatType.direct,
         participantIds: [myUid, otherUid],
-        participantNames: {myUid: myName, otherUid: otherName},
+        participantNames: {myUid: myUser?.name ?? '', otherUid: otherUser?.name ?? ''},
+        participantProfileImageUrls: {myUid: myUser?.profileImageUrl ?? '', otherUid: otherUser?.profileImageUrl ?? ''},
         unreadCount: {myUid: 0, otherUid: 0},
       ).toMap());
     }
@@ -228,19 +249,60 @@ class FirestoreService {
         return chats;
       });
 
-  Future<void> sendMessage(String chatId, MessageModel msg,
-      List<String> allParticipantIds) async {
+  /// sendMessage supports two call styles for backward compatibility:
+  /// 1) sendMessage(chatId, MessageModel message, List<String> participantIds)
+  /// 2) sendMessage(chatId, senderId, senderName, List<String> participantIds, {text, image})
+  Future<void> sendMessage(String chatId, dynamic arg2, [dynamic arg3, dynamic arg4, dynamic arg5, dynamic arg6]) async {
+    // Supports both:
+    // - sendMessage(chatId, MessageModel msg, List<String> participantIds)
+    // - sendMessage(chatId, senderId, senderName, List<String> participantIds, [text], [image])
+    MessageModel msg;
+    List<String> allParticipantIds = [];
+    String senderId = '';
+
+    if (arg2 is MessageModel) {
+      msg = arg2;
+      allParticipantIds = (arg3 as List<String>?) ?? [];
+      senderId = msg.senderId;
+    } else {
+      senderId = arg2 as String;
+      final senderName = arg3 as String;
+      allParticipantIds = (arg4 as List<String>?) ?? [];
+      final String? legacyText = arg5 as String?;
+      final XFile? legacyImage = arg6 as XFile?;
+
+      String? imageUrl;
+      if (legacyImage != null) {
+        imageUrl = await _storage.uploadChatImage(chatId, File(legacyImage.path));
+      }
+
+      msg = MessageModel(
+        id: '',
+        senderId: senderId,
+        senderName: senderName,
+        text: legacyText ?? '',
+        imageUrl: imageUrl,
+        createdAt: DateTime.now(),
+      );
+    }
+
     final batch = _db.batch();
-    final msgRef =
-        _db.collection('chats').doc(chatId).collection('messages').doc();
-    batch.set(msgRef, msg.toMap());
+    final msgRef = _db.collection('chats').doc(chatId).collection('messages').doc();
+    final msgToStore = MessageModel(
+      id: msgRef.id,
+      senderId: msg.senderId,
+      senderName: msg.senderName,
+      text: msg.text,
+      imageUrl: msg.imageUrl,
+      createdAt: DateTime.now(),
+    );
+
+    batch.set(msgRef, msgToStore.toMap());
     final unreadIncrements = {
-      for (final uid in allParticipantIds.where((id) => id != msg.senderId))
+      for (final uid in allParticipantIds.where((id) => id != senderId))
         'unreadCount.$uid': FieldValue.increment(1)
     };
-    final lastMessage = msg.imageUrl != null && msg.text.isEmpty
-        ? '📷 Photo'
-        : msg.text;
+    final lastMessage = (msg.imageUrl != null && (msg.text.isEmpty)) ? '📷 Photo' : msg.text;
     batch.update(_db.collection('chats').doc(chatId), {
       'lastMessage': lastMessage,
       'lastSenderId': msg.senderId,
@@ -265,6 +327,13 @@ class FirestoreService {
 
   // ── Moods ─────────────────────────────────────────────────────────────────
 
+  /// Uploads a mood photo to Firebase Storage and returns the URL.
+  Future<String> uploadMoodPhoto(String uid, File file) async {
+    final ref = _storage.ref('mood-photos/$uid/${DateTime.now().millisecondsSinceEpoch}_${file.path.split('/').last}');
+    await ref.putFile(file);
+    return ref.getDownloadURL();
+  }
+
   Future<String> postMood(MoodModel mood) async {
     final ref = await _db.collection('moods').add(mood.toMap());
     return ref.id;
@@ -282,6 +351,12 @@ class FirestoreService {
   Future<void> clearCurrentMood(String uid) =>
       _db.collection('users').doc(uid).update({'currentMoodId': null});
 
+  Future<void> setCurrentMood(String uid, String moodLabel) =>
+      _db.collection('users').doc(uid).update({
+        'currentMoodId': moodLabel,
+        'currentMoodSetAt': FieldValue.serverTimestamp(),
+      });
+
   Stream<List<MoodModel>> watchPublicMoods({int limit = 20}) => _db
       .collection('moods')
       .where('isPublic', isEqualTo: true)
@@ -298,6 +373,19 @@ class FirestoreService {
           .limit(limit)
           .snapshots()
           .map((s) => s.docs.map(MoodModel.fromDoc).toList());
+
+  /// Streams only mood posts that have a photo attached, for the mood widget section.
+  Stream<List<MoodModel>> watchUserMoodPhotos(String userId, {int limit = 12}) =>
+      _db
+          .collection('moods')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .limit(limit)
+          .snapshots()
+          .map((s) => s.docs
+              .map(MoodModel.fromDoc)
+              .where((m) => m.moodPhotoUrl != null && m.moodPhotoUrl!.isNotEmpty)
+              .toList());
 
   // ── App Version ───────────────────────────────────────────────────────────
 

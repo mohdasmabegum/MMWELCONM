@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' show Vector3;
 
 class AppTheme {
   static const Color ink = Color(0xFF191B2C);
@@ -127,12 +126,41 @@ class _BrandLogoState extends State<BrandLogo> with SingleTickerProviderStateMix
           ),
         );
       },
-      child: ClipOval(
-        child: Image.asset(
-          'assets/logo.png',
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
+      child: Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size * 0.13),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(size * 0.24),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFDFDFF), Color(0xFFEFF2FF)],
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.85), width: 1.6),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 22,
+              offset: const Offset(0, 14),
+            ),
+            BoxShadow(
+              color: AppTheme.violet.withValues(alpha: 0.12),
+              blurRadius: 26,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(size * 0.17),
+            color: Colors.white.withValues(alpha: 0.78),
+          ),
+          padding: EdgeInsets.all(size * 0.1),
+          child: Image.asset(
+            'assets/logo.png',
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
@@ -161,8 +189,9 @@ class _HoverCardState extends State<HoverCard> {
         duration: const Duration(milliseconds: 280),
         curve: Curves.easeOutCubic,
         margin: widget.margin,
-        transform: Matrix4.translationValues(0.0, _hovering ? -8.0 : 0.0, 0.0)
-          ..scaleByVector3(Vector3.all(_hovering ? 1.012 : 1.0)),
+        transform: Matrix4.identity()
+          ..translate(0.0, _hovering ? -8.0 : 0.0)
+          ..scale(_hovering ? 1.012 : 1.0),
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
@@ -213,8 +242,9 @@ class _HoverActionButtonState extends State<HoverActionButton> {
           duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          transform: Matrix4.translationValues(0.0, _hovering ? -5.0 : 0.0, 0.0)
-            ..scaleByVector3(Vector3.all(_hovering ? 1.02 : 1.0)),
+          transform: Matrix4.identity()
+            ..translate(0.0, _hovering ? -5.0 : 0.0)
+            ..scale(_hovering ? 1.02 : 1.0),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(18),
             gradient: dark
@@ -321,209 +351,6 @@ class FeaturePill extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-Future<void> showAuthSuccess(BuildContext context, {required String title, required String subtitle, required List<Color> colors}) async {
-  await showDialog(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.45),
-    builder: (ctx) => _SimpleSuccessDialog(title: title, subtitle: subtitle, colors: colors),
-  );
-}
-
-class _SimpleSuccessDialog extends StatefulWidget {
-  final String title;
-  final String subtitle;
-  final List<Color> colors;
-  const _SimpleSuccessDialog({required this.title, required this.subtitle, required this.colors});
-  @override
-  State<_SimpleSuccessDialog> createState() => _SimpleSuccessDialogState();
-}
-
-class _SimpleSuccessDialogState extends State<_SimpleSuccessDialog> with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale;
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 600))..forward();
-    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.elasticOut);
-    Future.delayed(const Duration(milliseconds: 1800), () { if (mounted) Navigator.of(context).pop(); });
-  }
-  @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 300,
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 28),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: [BoxShadow(color: widget.colors.first.withValues(alpha: 0.22), blurRadius: 40, offset: const Offset(0, 16))],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ScaleTransition(
-                scale: _scale,
-                child: Container(
-                  width: 80, height: 80,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: widget.colors),
-                    boxShadow: [BoxShadow(color: widget.colors.first.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 8))],
-                  ),
-                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 44),
-                ),
-              ),
-              const SizedBox(height: 22),
-              Text(widget.title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.ink)),
-              const SizedBox(height: 8),
-              Text(widget.subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55), fontWeight: FontWeight.w500)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-Future<void> showAccountCreatedDialog(BuildContext context, {required VoidCallback onGoToLogin}) async {
-  await showDialog(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.black.withValues(alpha: 0.45),
-    builder: (_) => _AccountCreatedDialog(onGoToLogin: onGoToLogin),
-  );
-}
-
-class _AccountCreatedDialog extends StatefulWidget {
-  final VoidCallback onGoToLogin;
-  const _AccountCreatedDialog({required this.onGoToLogin});
-
-  @override
-  State<_AccountCreatedDialog> createState() => _AccountCreatedDialogState();
-}
-
-class _AccountCreatedDialogState extends State<_AccountCreatedDialog> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _scale;
-  late final Animation<double> _fade;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 700))..forward();
-    _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
-    _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Material(
-        color: Colors.transparent,
-        child: FadeTransition(
-          opacity: _fade,
-          child: ScaleTransition(
-            scale: _scale,
-            child: Container(
-              width: 320,
-              padding: const EdgeInsets.symmetric(vertical: 38, horizontal: 28),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(28),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF9B6DFF).withValues(alpha: 0.18),
-                    blurRadius: 44,
-                    offset: const Offset(0, 18),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 78,
-                    height: 78,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF9B6DFF), Color(0xFFFF6F91)],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF9B6DFF).withValues(alpha: 0.32),
-                          blurRadius: 22,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(Icons.check_rounded, color: Colors.white, size: 42),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Welcome to MMWELCONN! 🎉',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.ink),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Your account has been created successfully.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55), fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Ready to connect your mood with style?',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: AppTheme.ink.withValues(alpha: 0.42)),
-                  ),
-                  const SizedBox(height: 26),
-                  const Divider(height: 1),
-                  const SizedBox(height: 18),
-                  GestureDetector(
-                    onTap: widget.onGoToLogin,
-                    child: RichText(
-                      text: TextSpan(
-                        text: 'Already have your account? ',
-                        style: TextStyle(fontSize: 14, color: AppTheme.ink.withValues(alpha: 0.55)),
-                        children: const [
-                          TextSpan(
-                            text: 'Log in',
-                            style: TextStyle(
-                              color: Color(0xFF4E8DFF),
-                              fontWeight: FontWeight.w800,
-                              decoration: TextDecoration.underline,
-                              decorationColor: Color(0xFF4E8DFF),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

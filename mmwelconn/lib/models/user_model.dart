@@ -8,6 +8,7 @@ class UserModel {
   final String profilePicture;
   final String status;
   final String? currentMoodId;
+  final DateTime? currentMoodSetAt;
   final bool notificationsEnabled;
   final bool autoUpdate;
   final DateTime createdAt;
@@ -21,6 +22,7 @@ class UserModel {
     this.profilePicture = '',
     this.status = 'online',
     this.currentMoodId,
+    this.currentMoodSetAt,
     this.notificationsEnabled = true,
     this.autoUpdate = true,
     required this.createdAt,
@@ -37,6 +39,9 @@ class UserModel {
       profilePicture: d['profilePicture'] ?? '',
       status: d['status'] ?? 'offline',
       currentMoodId: d['currentMoodId'],
+        currentMoodSetAt: d['currentMoodSetAt'] != null
+          ? (d['currentMoodSetAt'] as Timestamp).toDate()
+          : null,
       notificationsEnabled: d['notificationsEnabled'] ?? true,
       autoUpdate: d['autoUpdate'] ?? true,
       createdAt: d['createdAt'] != null
@@ -52,13 +57,23 @@ class UserModel {
         'uid': uid,
         'mmId': mmId,
         'name': name,
-        'email': email,
-        'profilePicture': profilePicture,
+      'email': email,
+      'profilePicture': profilePicture,
         'status': status,
         'currentMoodId': currentMoodId,
+        'currentMoodSetAt': currentMoodSetAt != null ? Timestamp.fromDate(currentMoodSetAt!) : null,
         'notificationsEnabled': notificationsEnabled,
         'autoUpdate': autoUpdate,
         'createdAt': Timestamp.fromDate(createdAt),
         'lastActive': Timestamp.fromDate(lastActive),
       };
+
+  String get profileImageUrl => profilePicture;
+
+  bool get hasActiveMood {
+    if (currentMoodId == null || currentMoodSetAt == null) return false;
+    return DateTime.now().difference(currentMoodSetAt!).inHours < 24;
+  }
+
+  DateTime? get currentMoodExpiresAt => currentMoodSetAt?.add(const Duration(hours: 24));
 }

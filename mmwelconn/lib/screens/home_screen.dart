@@ -1,20 +1,19 @@
 import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mmwelconn/models/chat_model.dart';
-import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/mood_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/screens/chats_screen.dart';
-import 'package:mmwelconn/screens/contacts_screen.dart';
+import 'package:mmwelconn/screens/connections_screen.dart';
+import 'package:mmwelconn/screens/photos_screen.dart';
 import 'package:mmwelconn/screens/settings_screen.dart';
+import 'package:mmwelconn/screens/profile_screen.dart';
+import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
-
-const String _appVersion = '1.2.2';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,172 +22,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  final FirestoreService _fs = FirestoreService();
-  StreamSubscription<List<ContactModel>>? _pendingSub;
-  StreamSubscription<List<ContactModel>>? _acceptedSub;
-  StreamSubscription<List<ChatModel>>? _chatsSub;
-  Set<String> _knownPending = {};
-  Set<String> _knownAccepted = {};
-  Map<String, String?> _knownLastMsg = {};
-  bool _initialPendingLoaded = false;
-  bool _initialAcceptedLoaded = false;
-  bool _initialChatsLoaded = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initFcm();
-    _initNotificationListeners();
-    _checkForUpdate();
-  }
-
-  Future<void> _checkForUpdate() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    // Wait a moment so the UI is fully loaded
-    await Future.delayed(const Duration(seconds: 2));
-    final versionData = await _fs.watchAppVersion().first;
-    final latest = versionData['latest'] ?? _appVersion;
-    final releaseNotes = versionData['releaseNotes'] ?? '';
-    final releaseDate = versionData['releaseDate'] ?? '';
-    if (latest != _appVersion) {
-      final user = await _fs.getUser(uid);
-      final autoUpdate = user?.autoUpdate ?? true;
-      NotificationService().show(InAppNotification(
-        title: autoUpdate ? 'Update Available 🚀 v$latest' : 'New Update v$latest',
-        body: '${autoUpdate ? 'Auto-updating — ' : 'Tap to update — '}${releaseDate.isNotEmpty ? 'Released $releaseDate. ' : ''}$releaseNotes'.trim(),
-        type: NotifType.welcome,
-        onTap: () => setState(() => _selectedIndex = 3),
-      ));
-    }
-  }
-
-  void _initNotificationListeners() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final ns = NotificationService();
-
-    // Listen for incoming contact requests
-    _pendingSub = _fs
-        .watchContacts(uid, status: ContactStatus.pending, direction: ContactDirection.incoming)
-        .listen((contacts) {
-      final ids = contacts.map((c) => c.contactUid).toSet();
-      if (_initialPendingLoaded) {
-        for (final c in contacts) {
-          if (!_knownPending.contains(c.contactUid)) {
-            ns.show(InAppNotification(
-              title: 'New Connection Request',
-              body: '${c.contactName} wants to connect with you',
-              type: NotifType.newRequest,
-              onTap: () => setState(() => _selectedIndex = 2),
-            ));
-          }
-        }
-      }
-      _knownPending = ids;
-      _initialPendingLoaded = true;
-    });
-
-    // Listen for accepted connections
-    _acceptedSub = _fs
-        .watchContacts(uid, status: ContactStatus.accepted)
-        .listen((contacts) {
-      final ids = contacts.map((c) => c.contactUid).toSet();
-      if (_initialAcceptedLoaded) {
-        for (final c in contacts) {
-          if (!_knownAccepted.contains(c.contactUid)) {
-            ns.show(InAppNotification(
-              title: 'Connection Accepted! 🎉',
-              body: '${c.contactName} accepted your connection request',
-              type: NotifType.accepted,
-              onTap: () => setState(() => _selectedIndex = 1),
-            ));
-          }
-        }
-      }
-      _knownAccepted = ids;
-      _initialAcceptedLoaded = true;
-    });
-
-    // Listen for new messages
-    _chatsSub = _fs.watchMyChats(uid).listen((chats) {
-      if (_initialChatsLoaded) {
-        for (final chat in chats) {
-          final prev = _knownLastMsg[chat.id];
-          final curr = chat.lastMessage;
-          final isNewMsg = curr != null && curr != prev;
-          final notFromMe = chat.lastSenderId != uid && chat.lastSenderId != null;
-          if (isNewMsg && notFromMe) {
-            final senderName = chat.participantNames.entries
-                .firstWhere((e) => e.key != uid, orElse: () => const MapEntry('', 'Someone'))
-                .value;
-            ns.show(InAppNotification(
-              title: 'New Message from $senderName',
-              body: curr,
-              type: NotifType.newMessage,
-              onTap: () => setState(() => _selectedIndex = 1),
-            ));
-          }
-        }
-      }
-      _knownLastMsg = {for (final c in chats) c.id: c.lastMessage};
-      _initialChatsLoaded = true;
-    });
-  }
-
-  Future<void> _initFcm() async {
-    final messaging = FirebaseMessaging.instance;
-    await messaging.requestPermission();
-    final token = await messaging.getToken();
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null && token != null) {
-      await FirestoreService().updateUser(uid, {'fcmToken': token});
-    }
-    // Refresh token when it changes
-    messaging.onTokenRefresh.listen((newToken) async {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
-        await FirestoreService().updateUser(uid, {'fcmToken': newToken});
-      }
-    });
-    // Show in-app popup for foreground FCM messages (fallback for push)
-    FirebaseMessaging.onMessage.listen((message) {
-      if (!mounted) return;
-      final title = message.notification?.title ?? '';
-      final body = message.notification?.body ?? '';
-      if (title.isEmpty && body.isEmpty) return;
-      NotificationService().show(InAppNotification(
-        title: title,
-        body: body,
-        type: NotifType.newMessage,
-      ));
-    });
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _pendingSub?.cancel();
-    _acceptedSub?.cancel();
-    _chatsSub?.cancel();
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final fs = FirestoreService();
-    if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      fs.setUserStatus(uid, 'offline');
-    } else if (state == AppLifecycleState.resumed) {
-      fs.setUserStatus(uid, 'online');
-    }
-  }
 
   void _goToTab(int index) => setState(() => _selectedIndex = index);
 
@@ -197,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final pages = [
       _HomePage(onGoToChats: () => _goToTab(1), onGoToContacts: () => _goToTab(2)),
       const ChatsScreen(),
-      const ContactsScreen(),
+      const ConnectionsScreen(),
       const SettingsScreen(),
     ];
 
@@ -234,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.chat_rounded), label: 'Chats'),
-            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Connections'),
+            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Contacts'),
             BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
           ],
         ),
@@ -277,10 +112,19 @@ class _HomePageState extends State<_HomePage> {
     super.dispose();
   }
 
-  Future<void> _toggleStatus(bool isOnline) async {
+  Future<void> _setStatus(bool online) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    await FirestoreService().setUserStatus(uid, isOnline ? 'online' : 'offline');
+    await _fs.setUserStatus(uid, online ? 'online' : 'offline');
+  }
+
+  void _showMoodSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _MoodSheet(userModel: _userModel),
+    );
   }
 
   @override
@@ -302,18 +146,19 @@ class _HomePageState extends State<_HomePage> {
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         _TopHero(displayName: displayName, userModel: _userModel),
                         const SizedBox(height: 26),
-                        _StatsRow(
-                          userModel: _userModel,
-                          onToggleStatus: _toggleStatus,
-                        ),
+                        _StatsRow(userModel: _userModel),
                         const SizedBox(height: 26),
                         _QuickActions(
                           onStartChat: widget.onGoToChats,
-                          onAddContact: widget.onGoToContacts,
+                          onOpenMood: _showMoodSheet,
+                          onOpenPhotos: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const PhotosScreen()),
+                            );
+                          },
                         ),
                       ],
                     ),
@@ -333,12 +178,13 @@ class _HomePageState extends State<_HomePage> {
 class _TopHero extends StatelessWidget {
   final String displayName;
   final UserModel? userModel;
+  final ValueChanged<bool> onStatusChanged;
 
-  const _TopHero({required this.displayName, required this.userModel});
+  const _TopHero({required this.displayName, required this.userModel, required this.onStatusChanged});
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = userModel?.status == 'online';
+    final isOnline = (userModel?.status ?? 'online') == 'online';
     return HoverCard(
       child: Container(
         padding: const EdgeInsets.all(24),
@@ -350,86 +196,81 @@ class _TopHero extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Stack(
-                  children: [
-                    const BrandLogo(size: 92),
-                    Positioned(
-                      right: 2,
-                      bottom: 2,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: isOnline ? Colors.green : Colors.grey,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                      ),
+            GestureDetector(
+              onTap: () {
+                final uid = FirebaseAuth.instance.currentUser?.uid;
+                if (uid == null) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProfileScreen(
+                      userId: uid,
+                      viewerUid: uid,
+                      editable: true,
                     ),
-                  ],
-                ),
-                const SizedBox(width: 18),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  ),
+                );
+              },
+              child: Row(
+                children: [
+                  Stack(
                     children: [
-                      Text(
-                        'MMWELCONN',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.ink,
-                            ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'A calm social space for mood, chat, and connection.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.ink.withValues(alpha: 0.66),
-                            ),
+                      const BrandLogo(size: 92),
+                      Positioned(
+                        right: 2,
+                        bottom: 2,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: isOnline ? Colors.green : Colors.grey,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  const SizedBox(width: 18),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'MMWELCONN',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.ink,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'A calm social space for mood, chat, and connection.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.ink.withValues(alpha: 0.66),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 18),
             Row(
               children: [
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome back, $displayName 👋',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.ink,
-                            ),
-                      ),
-                      if (userModel?.mmId.isNotEmpty == true) ...[
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppTheme.violet.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppTheme.violet.withValues(alpha: 0.25)),
-                          ),
-                          child: Text(
-                            'ID: ${userModel!.mmId}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.violet,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                  child: Text(
+                    'Welcome back, $displayName 👋',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.ink,
                         ),
-                      ],
-                    ],
                   ),
+                ),
+                Switch.adaptive(
+                  value: isOnline,
+                  onChanged: onStatusChanged,
+                  activeColor: AppTheme.violet,
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -481,291 +322,47 @@ class _TopHero extends StatelessWidget {
 
 // ── Stats row ─────────────────────────────────────────────────────────────────
 
-class _StatsRow extends StatefulWidget {
+class _StatsRow extends StatelessWidget {
   final UserModel? userModel;
-  final ValueChanged<bool> onToggleStatus;
-
-  const _StatsRow({
-    required this.userModel,
-    required this.onToggleStatus,
-  });
-
-  @override
-  State<_StatsRow> createState() => _StatsRowState();
-}
-
-class _StatsRowState extends State<_StatsRow> {
-  final FirestoreService _fs = FirestoreService();
-  MoodModel? _currentMood;
-  StreamSubscription<MoodModel?>? _moodSub;
-  String? _watchedMoodId;
-
-  void _subscribeMood(String? moodId) {
-    if (moodId == _watchedMoodId) return;
-    _moodSub?.cancel();
-    _watchedMoodId = moodId;
-    if (moodId != null) {
-      _moodSub = _fs.watchMoodById(moodId).listen((m) {
-        if (!mounted) return;
-        // Auto-clear mood if older than 24 hours
-        if (m != null && DateTime.now().difference(m.createdAt).inHours >= 24) {
-          final uid = widget.userModel?.uid;
-          if (uid != null) _fs.clearCurrentMood(uid);
-          setState(() => _currentMood = null);
-        } else {
-          setState(() => _currentMood = m);
-        }
-      });
-    } else {
-      if (mounted) setState(() => _currentMood = null);
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _subscribeMood(widget.userModel?.currentMoodId);
-  }
-
-  @override
-  void didUpdateWidget(_StatsRow old) {
-    super.didUpdateWidget(old);
-    _subscribeMood(widget.userModel?.currentMoodId);
-  }
-
-  bool _moodExpanded = false;
-  String? _pendingEmoji;
-  String? _pendingLabel;
-  bool _posting = false;
-
-  static const _moods = [
-    ('😊', 'Happy'), ('😔', 'Sad'), ('😌', 'Calm'), ('😤', 'Frustrated'),
-    ('🥳', 'Excited'), ('😴', 'Tired'), ('🤩', 'Inspired'), ('😰', 'Anxious'),
-  ];
-
-  Future<void> _postMood() async {
-    if (_pendingEmoji == null) return;
-    final uid = widget.userModel?.uid;
-    if (uid == null) return;
-    setState(() => _posting = true);
-    try {
-      final moodId = await _fs.postMood(MoodModel(
-        id: '',
-        userId: uid,
-        userDisplayName: widget.userModel?.name ?? '',
-        userPhotoUrl: widget.userModel?.profilePicture ?? '',
-        emoji: _pendingEmoji!,
-        label: _pendingLabel!,
-        isPublic: true,
-        createdAt: DateTime.now(),
-      ));
-      await _fs.updateUser(uid, {'currentMoodId': moodId});
-      if (!mounted) return;
-      setState(() { _moodExpanded = false; _pendingEmoji = null; _pendingLabel = null; });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Mood updated ✓'), backgroundColor: AppTheme.violet),
-      );
-    } catch (_) {
-    } finally {
-      if (mounted) setState(() => _posting = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _moodSub?.cancel();
-    super.dispose();
-  }
+  const _StatsRow({required this.userModel});
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = widget.userModel?.status == 'online';
-    final moodDisplay = _currentMood != null
-        ? '${_currentMood!.emoji} ${_currentMood!.label}'
-        : widget.userModel?.currentMoodId != null ? '...' : 'None';
+    final tiles = [
+      ('Status', (userModel?.status ?? 'online').toUpperCase(), AppTheme.sky, Icons.circle),
+    ];
 
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 700),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Wrap(
-            spacing: 14,
-            runSpacing: 14,
-            alignment: WrapAlignment.center,
+    return Wrap(
+      spacing: 14,
+      runSpacing: 14,
+      children: tiles.map((tile) => HoverCard(
+        child: Container(
+          width: 160,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            color: Colors.white.withValues(alpha: 0.7),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Status tile with toggle
-              HoverCard(
-                child: Container(
-                  width: 160,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Icon(Icons.circle, color: isOnline ? Colors.green : Colors.grey, size: 20),
-                          Transform.scale(
-                            scale: 0.75,
-                            child: Switch(
-                              value: isOnline,
-                              onChanged: widget.userModel != null ? widget.onToggleStatus : null,
-                              activeThumbColor: Colors.green,
-                              activeTrackColor: Colors.green.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text('Status',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.ink.withValues(alpha: 0.62),
-                              )),
-                      const SizedBox(height: 4),
-                      Text(
-                        isOnline ? 'ONLINE' : 'OFFLINE',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: isOnline ? Colors.green : Colors.grey,
-                              fontSize: 14,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Mood tile — tap to expand picker
-              GestureDetector(
-                onTap: () => setState(() => _moodExpanded = !_moodExpanded),
-                child: HoverCard(
-                  child: Container(
-                    width: 160,
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      color: _moodExpanded
-                          ? AppTheme.violet.withValues(alpha: 0.08)
-                          : Colors.white.withValues(alpha: 0.7),
-                      border: _moodExpanded
-                          ? Border.all(color: AppTheme.violet.withValues(alpha: 0.3))
-                          : null,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Icon(Icons.favorite_rounded, color: AppTheme.violet, size: 20),
-                            Icon(
-                              _moodExpanded ? Icons.expand_less_rounded : Icons.edit_rounded,
-                              size: 16,
-                              color: AppTheme.violet.withValues(alpha: 0.7),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Mood',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: AppTheme.ink.withValues(alpha: 0.62),
-                                )),
-                        const SizedBox(height: 4),
-                        Text(
-                          moodDisplay,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.ink,
-                                fontSize: 14,
-                              ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              Icon(tile.$4, color: tile.$3),
+              const SizedBox(height: 18),
+              Text(tile.$1,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.ink.withValues(alpha: 0.62),
+                      )),
+              const SizedBox(height: 6),
+              Text(tile.$2,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.ink,
+                        fontSize: 18,
+                      )),
             ],
           ),
-          // Inline mood picker — expands below tiles
-          AnimatedSize(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeInOut,
-            child: _moodExpanded
-                ? Container(
-                    margin: const EdgeInsets.only(top: 14),
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.82),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppTheme.violet.withValues(alpha: 0.18)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text('How are you feeling?',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 15, color: AppTheme.ink)),
-                        const SizedBox(height: 14),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: _moods.map((m) {
-                            final sel = _pendingEmoji == m.$1;
-                            return GestureDetector(
-                              onTap: () => setState(() { _pendingEmoji = m.$1; _pendingLabel = m.$2; }),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: sel ? AppTheme.violet.withValues(alpha: 0.15) : Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                      color: sel ? AppTheme.violet : Colors.transparent, width: 2),
-                                ),
-                                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                                  Text(m.$1, style: const TextStyle(fontSize: 18)),
-                                  const SizedBox(width: 5),
-                                  Text(m.$2,
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: sel ? AppTheme.violet : AppTheme.ink.withValues(alpha: 0.7))),
-                                ]),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _pendingEmoji == null || _posting ? null : _postMood,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.violet,
-                              foregroundColor: Colors.white,
-                              disabledBackgroundColor: AppTheme.violet.withValues(alpha: 0.35),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              elevation: 0,
-                            ),
-                            child: Text(_posting ? 'Updating...' : 'Update Mood',
-                                style: const TextStyle(fontWeight: FontWeight.w800)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
-      ),
+        ),
+      )).toList(),
     );
   }
 }
@@ -774,11 +371,13 @@ class _StatsRowState extends State<_StatsRow> {
 
 class _QuickActions extends StatelessWidget {
   final VoidCallback onStartChat;
-  final VoidCallback onAddContact;
+  final VoidCallback onOpenMood;
+  final VoidCallback onOpenPhotos;
 
   const _QuickActions({
     required this.onStartChat,
-    required this.onAddContact,
+    required this.onOpenMood,
+    required this.onOpenPhotos,
   });
 
   @override
@@ -807,10 +406,19 @@ class _QuickActions extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: _ActionCard(
-                  icon: Icons.person_add_rounded,
-                  label: 'Add Connection',
+                  icon: Icons.favorite_rounded,
+                  label: 'Current Mood',
+                  color: AppTheme.pink,
+                  onTap: onOpenMood,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ActionCard(
+                  icon: Icons.photo_library_rounded,
+                  label: 'My Photos',
                   color: AppTheme.violet,
-                  onTap: onAddContact,
+                  onTap: onOpenPhotos,
                 ),
               ),
             ],
@@ -863,6 +471,198 @@ class _ActionCard extends StatelessWidget {
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.ink.withValues(alpha: 0.75))),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Mood bottom sheet ─────────────────────────────────────────────────────────
+
+class _MoodSheet extends StatefulWidget {
+  final UserModel? userModel;
+  const _MoodSheet({required this.userModel});
+
+  @override
+  State<_MoodSheet> createState() => _MoodSheetState();
+}
+
+class _MoodSheetState extends State<_MoodSheet> {
+  final FirestoreService _fs = FirestoreService();
+  final TextEditingController _noteCtrl = TextEditingController();
+  String? _selectedEmoji;
+  String? _selectedLabel;
+  bool _isPublic = true;
+  bool _posting = false;
+
+  static const _moods = [
+    ('😊', 'Happy'),
+    ('😔', 'Sad'),
+    ('😌', 'Calm'),
+    ('😤', 'Frustrated'),
+    ('🥳', 'Excited'),
+    ('😴', 'Tired'),
+    ('🤩', 'Inspired'),
+    ('😰', 'Anxious'),
+  ];
+
+  Future<void> _post() async {
+    if (_selectedEmoji == null) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    setState(() => _posting = true);
+    try {
+      await _fs.postMood(MoodModel(
+        id: '',
+        userId: uid,
+        userDisplayName: widget.userModel?.name ?? '',
+        userPhotoUrl: widget.userModel?.profilePicture ?? '',
+        emoji: _selectedEmoji!,
+        label: _selectedLabel!,
+        note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+        isPublic: _isPublic,
+        createdAt: DateTime.now(),
+      ));
+      await _fs.setCurrentMood(uid, _selectedLabel!);
+      if (!mounted) return;
+      final emoji = _selectedEmoji;
+      final label = _selectedLabel;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Mood shared: $emoji $label ✓'),
+          backgroundColor: AppTheme.violet,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _posting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to share mood: $e')),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        decoration: const BoxDecoration(
+          color: Color(0xFFF6F8FF),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: AppTheme.ink.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(999))),
+            ),
+            const SizedBox(height: 16),
+            const Text('How are you feeling?',
+                style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                    color: AppTheme.ink)),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: _moods.map((m) {
+                final selected = _selectedEmoji == m.$1;
+                return GestureDetector(
+                  onTap: () => setState(() {
+                    _selectedEmoji = m.$1;
+                    _selectedLabel = m.$2;
+                  }),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppTheme.violet.withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: selected
+                              ? AppTheme.violet
+                              : Colors.transparent,
+                          width: 2),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Text(m.$1, style: const TextStyle(fontSize: 20)),
+                      const SizedBox(width: 6),
+                      Text(m.$2,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              color: selected
+                                  ? AppTheme.violet
+                                  : AppTheme.ink.withValues(alpha: 0.7))),
+                    ]),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _noteCtrl,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: 'Add a note (optional)...',
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.9),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Switch(
+                  value: _isPublic,
+                  onChanged: (v) => setState(() => _isPublic = v),
+                  activeThumbColor: AppTheme.violet,
+                ),
+                const SizedBox(width: 8),
+                Text(_isPublic ? 'Visible to everyone' : 'Only me',
+                    style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.ink.withValues(alpha: 0.6))),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _selectedEmoji == null || _posting ? null : _post,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.violet,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: AppTheme.violet.withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+              child: Text(_posting ? 'Sharing...' : 'Share Mood',
+                  style: const TextStyle(fontWeight: FontWeight.w800)),
+            ),
           ],
         ),
       ),
