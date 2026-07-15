@@ -7,6 +7,7 @@ class ChatModel {
   final ChatType chatType;
   final List<String> participantIds;
   final Map<String, String> participantNames;
+  final Map<String, String> participantProfileImageUrls;
   final String? groupName;
   final String? lastMessage;
   final String? lastSenderId;
@@ -18,6 +19,7 @@ class ChatModel {
     this.chatType = ChatType.direct,
     required this.participantIds,
     required this.participantNames,
+    required this.participantProfileImageUrls,
     this.groupName,
     this.lastMessage,
     this.lastSenderId,
@@ -34,6 +36,7 @@ class ChatModel {
           orElse: () => ChatType.direct),
       participantIds: List<String>.from(d['participantIds'] ?? []),
       participantNames: Map<String, String>.from(d['participantNames'] ?? {}),
+      participantProfileImageUrls: Map<String, String>.from(d['participantProfileImageUrls'] ?? {}),
       groupName: d['groupName'],
       lastMessage: d['lastMessage'],
       lastSenderId: d['lastSenderId'],
@@ -48,6 +51,7 @@ class ChatModel {
         'chatType': chatType.name,
         'participantIds': participantIds,
         'participantNames': participantNames,
+        'participantProfileImageUrls': participantProfileImageUrls,
         'groupName': groupName,
         'lastMessage': lastMessage,
         'lastSenderId': lastSenderId,

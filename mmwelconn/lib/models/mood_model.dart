@@ -8,6 +8,7 @@ class MoodModel {
   final String emoji;
   final String label;
   final String? note;
+  final String? moodPhotoUrl; // photo attached to this mood post
   final bool isPublic;
   final DateTime createdAt;
 
@@ -19,6 +20,7 @@ class MoodModel {
     required this.emoji,
     required this.label,
     this.note,
+    this.moodPhotoUrl,
     this.isPublic = true,
     required this.createdAt,
   });
@@ -33,6 +35,7 @@ class MoodModel {
       emoji: d['emoji'] ?? '',
       label: d['label'] ?? '',
       note: d['note'],
+      moodPhotoUrl: d['moodPhotoUrl'],
       isPublic: d['isPublic'] ?? true,
       createdAt: d['createdAt'] != null
           ? (d['createdAt'] as Timestamp).toDate()
@@ -47,6 +50,7 @@ class MoodModel {
         'emoji': emoji,
         'label': label,
         'note': note,
+        if (moodPhotoUrl != null) 'moodPhotoUrl': moodPhotoUrl,
         'isPublic': isPublic,
         'createdAt': FieldValue.serverTimestamp(),
       };

@@ -90,6 +90,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           color: AppTheme.ink.withValues(alpha: 0.6),
                                         ),
                                       ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'MM ID: ${user?.mmId ?? ''}',
+                                        style: TextStyle(
+                                          color: AppTheme.ink.withValues(alpha: 0.7),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -138,34 +146,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(builder: (_) => const RequestsScreen()),
                                 );
-                                ListTile(
-                                  leading: const Icon(Icons.photo_library_rounded, color: AppTheme.sky),
-                                  title: const Text('My photos'),
-                                  subtitle: const Text('Open your saved photo gallery'),
-                                  trailing: const Icon(Icons.chevron_right_rounded),
-                                  onTap: () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(builder: (_) => const PhotosScreen()),
-                                    );
-                                  },
-                                ),
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.photo_library_rounded, color: AppTheme.sky),
+                              title: const Text('My photos'),
+                              subtitle: const Text('Open your saved photo gallery'),
+                              trailing: const Icon(Icons.chevron_right_rounded),
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const PhotosScreen()),
+                                );
                               },
                             ),
                           ],
                         ),
                         const SizedBox(height: 18),
                         _SettingsSection(
-                                SwitchListTile(
-                                  value: user?.status == 'online',
-                                  onChanged: _changingStatus || uid == null
-                                      ? null
-                                      : (value) => _setStatus(uid, value ? 'online' : 'offline'),
-                                  title: const Text('Manual online status'),
-                                  subtitle: const Text('Change how others see you'),
-                                  activeColor: AppTheme.violet,
-                                ),
                           title: 'Preferences',
                           children: [
+                            SwitchListTile(
+                              value: user?.status == 'online',
+                              onChanged: _changingStatus || uid == null
+                                  ? null
+                                  : (value) => _setStatus(uid, value ? 'online' : 'offline'),
+                              title: const Text('Manual online status'),
+                              subtitle: const Text('Change how others see you'),
+                              activeColor: AppTheme.violet,
+                            ),
                             SwitchListTile(
                               value: user?.notificationsEnabled ?? true,
                               onChanged: uid == null

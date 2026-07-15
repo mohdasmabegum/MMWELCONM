@@ -147,7 +147,11 @@ class _HomePageState extends State<_HomePage> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _TopHero(displayName: displayName, userModel: _userModel),
+                        _TopHero(
+                          displayName: displayName,
+                          userModel: _userModel,
+                          onStatusChanged: _setStatus,
+                        ),
                         const SizedBox(height: 26),
                         _StatsRow(userModel: _userModel),
                         const SizedBox(height: 26),
@@ -247,6 +251,14 @@ class _TopHero extends StatelessWidget {
                           'A calm social space for mood, chat, and connection.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: AppTheme.ink.withValues(alpha: 0.66),
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'MM ID: ${userModel?.mmId ?? '...'}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppTheme.ink.withValues(alpha: 0.58),
+                                fontWeight: FontWeight.w700,
                               ),
                         ),
                       ],
