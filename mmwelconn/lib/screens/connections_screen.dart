@@ -345,3 +345,6 @@ class _ContactTile extends StatelessWidget {
 }
 
 String _formatDate(DateTime date) => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+String _pretty(String value) =>
+  value.isEmpty ? 'Unknown' : value[0].toUpperCase() + value.substring(1);
