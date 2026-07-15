@@ -55,6 +55,60 @@ class _PhotosScreenState extends State<PhotosScreen> {
     }
   }
 
+  void _viewLargeImage(BuildContext context, MoodModel mood) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: InteractiveViewer(
+                  child: Image.network(
+                    mood.moodPhotoUrl!,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(child: CircularProgressIndicator(color: Colors.white));
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.share_rounded),
+                label: const Text('Share to Chat'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _sharePhoto(context, mood);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.violet,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   void _sharePhoto(BuildContext context, MoodModel mood) async {
     final chats = await _fs.watchMyChats(_uid).first;
     if (!context.mounted) return;
@@ -230,17 +284,17 @@ class _PhotosScreenState extends State<PhotosScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: photos.length,
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.86,
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.0,
                     ),
                     itemBuilder: (context, index) {
                       final mood = photos[index];
                       return GestureDetector(
-                        onTap: () => _sharePhoto(context, mood),
+                        onTap: () => _viewLargeImage(context, mood),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
@@ -255,15 +309,15 @@ class _PhotosScreenState extends State<PhotosScreen> {
                               Align(
                                 alignment: Alignment.bottomLeft,
                                 child: Container(
-                                  margin: const EdgeInsets.all(10),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  margin: const EdgeInsets.all(6),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.4),
+                                    color: Colors.black.withValues(alpha: 0.5),
                                     borderRadius: BorderRadius.circular(999),
                                   ),
                                   child: const Text(
-                                    'Tap to share',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                                    'View',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 10),
                                   ),
                                 ),
                               ),

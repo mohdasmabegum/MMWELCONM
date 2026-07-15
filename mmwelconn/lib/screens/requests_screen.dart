@@ -48,7 +48,7 @@ class _RequestsScreenState extends State<RequestsScreen>
                     Text(
                       'Requests',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.w900,
+                            fontWeight: FontWeight.normal,
                             color: AppTheme.ink,
                           ),
                     ),

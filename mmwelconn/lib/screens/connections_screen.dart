@@ -122,23 +122,33 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return SoftGlowBackground(
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Connections',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.normal,
-                          color: AppTheme.ink,
+    return Scaffold(
+      body: SoftGlowBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back_rounded),
                         ),
-                  ),
-                  const SizedBox(height: 14),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Connections',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.normal,
+                                color: AppTheme.ink,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
                   TextField(
                     controller: _searchCtrl,
                     onChanged: _search,
@@ -186,6 +196,7 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -591,41 +602,43 @@ class _ContactTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-            backgroundColor: AppTheme.violet.withValues(alpha: 0.18),
-            child: photoUrl.isEmpty ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: AppTheme.violet, fontWeight: FontWeight.w800)) : null,
+      child: HoverCard(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.72),
+            borderRadius: BorderRadius.circular(18),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.ink)),
-                if (subtitle.isNotEmpty)
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.5))),
-                if (relation != null && relation!.isNotEmpty)
-                  Text('Relation: $relation', style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.48))),
-                if (detail != null && detail!.isNotEmpty)
-                  Text(detail!, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45))),
-                if (status != null && status!.isNotEmpty)
-                  Text(status!, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45))),
-              ],
-            ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                backgroundColor: AppTheme.violet.withValues(alpha: 0.18),
+                child: photoUrl.isEmpty ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?', style: const TextStyle(color: AppTheme.violet, fontWeight: FontWeight.w800)) : null,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.ink)),
+                    if (subtitle.isNotEmpty)
+                      Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.5))),
+                    if (relation != null && relation!.isNotEmpty)
+                      Text('Relation: $relation', style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.48))),
+                    if (detail != null && detail!.isNotEmpty)
+                      Text(detail!, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45))),
+                    if (status != null && status!.isNotEmpty)
+                      Text(status!, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45))),
+                  ],
+                ),
+              ),
+              if (trailing != null) trailing!,
+            ],
           ),
-          if (trailing != null) trailing!,
-        ],
+        ),
       ),
-    ),
     );
   }
 }
