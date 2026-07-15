@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/screens/connections_screen.dart';
 import 'package:mmwelconn/screens/photos_screen.dart';
@@ -29,10 +30,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _auth.logout();
   }
 
-  Future<void> _setStatus(String uid, String status) async {
+  Future<void> _setShowOnline(String uid, bool showOnline) async {
     setState(() => _changingStatus = true);
     try {
-      await _fs.setUserStatus(uid, status);
+      await _fs.setShowOnline(uid, showOnline);
     } finally {
       if (mounted) setState(() => _changingStatus = false);
     }
@@ -91,12 +92,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        'MM ID: ${user?.mmId ?? ''}',
-                                        style: TextStyle(
-                                          color: AppTheme.ink.withValues(alpha: 0.7),
-                                          fontWeight: FontWeight.w700,
-                                        ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'MM ID: ',
+                                            style: TextStyle(
+                                              color: AppTheme.ink.withValues(alpha: 0.7),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          Text(
+                                            user?.mmId ?? '',
+                                            style: const TextStyle(
+                                              color: AppTheme.violet,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                          if (user?.mmId != null && user!.mmId.isNotEmpty) ...[
+                                            const SizedBox(width: 6),
+                                            GestureDetector(
+                                              onTap: () {
+                                                Clipboard.setData(ClipboardData(text: user.mmId));
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  const SnackBar(content: Text('MM ID copied to clipboard!')),
+                                                );
+                                              },
+                                              child: const Icon(
+                                                Icons.copy_rounded,
+                                                size: 14,
+                                                color: AppTheme.violet,
+                                              ),
+                                            ),
+                                          ]
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -165,15 +194,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _SettingsSection(
                           title: 'Preferences',
                           children: [
-                            SwitchListTile(
-                              value: user?.status == 'online',
-                              onChanged: _changingStatus || uid == null
-                                  ? null
-                                  : (value) => _setStatus(uid, value ? 'online' : 'offline'),
-                              title: const Text('Manual online status'),
-                              subtitle: const Text('Change how others see you'),
-                              activeColor: AppTheme.violet,
-                            ),
+                             SwitchListTile(
+                               value: user?.showOnline ?? true,
+                               onChanged: _changingStatus || uid == null
+                                   ? null
+                                   : (value) => _setShowOnline(uid, value),
+                               title: const Text('Manual online status'),
+                               subtitle: const Text('Change how others see you'),
+                               activeColor: AppTheme.violet,
+                             ),
                             SwitchListTile(
                               value: user?.notificationsEnabled ?? true,
                               onChanged: uid == null

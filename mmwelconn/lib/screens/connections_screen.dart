@@ -2,9 +2,11 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/screens/profile_screen.dart';
+import 'package:mmwelconn/screens/chat_detail_screen.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
@@ -52,10 +54,36 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
     }
   }
 
+  Future<RelationshipType?> _showRelationDialog(String name) async {
+    return showDialog<RelationshipType>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Select relation for $name', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: RelationshipType.values.map((type) {
+              return ListTile(
+                leading: Icon(_getRelationIcon(type), color: _getRelationColor(type)),
+                title: Text(_pretty(type.name), style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.ink)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onTap: () => Navigator.of(context).pop(type),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _addContact(UserModel user) async {
     final senderUid = FirebaseAuth.instance.currentUser!.uid;
     final sender = await fs.getUser(senderUid);
     if (sender == null) return;
+
+    final type = await _showRelationDialog(user.name);
+    if (type == null) return;
 
     await fs.sendContactRequest(
       senderUid: senderUid,
@@ -66,12 +94,12 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
       recipientName: user.name,
       recipientMmId: user.mmId,
       recipientPhotoUrl: user.profilePicture,
-      relationship: RelationshipType.friend,
+      relationship: type,
     );
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Request sent to ${user.name}')),
+        SnackBar(content: Text('Request sent to ${user.name} as ${_pretty(type.name)}')),
       );
       await _updateWidget(user.name, 'Request Sent');
     }
@@ -221,6 +249,209 @@ class _ContactList extends StatelessWidget {
     return 'No items';
   }
 
+  void _showConnectionDetailsSheet(BuildContext context, ContactModel c, String currentUid) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StreamBuilder<UserModel?>(
+          stream: fs.watchUser(c.contactUid),
+          builder: (context, snap) {
+            final user = snap.data;
+            final isOnline = user?.status == 'online';
+            
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  CircleAvatar(
+                    radius: 40,
+                    backgroundImage: c.contactPhotoUrl.isNotEmpty ? NetworkImage(c.contactPhotoUrl) : null,
+                    backgroundColor: AppTheme.violet.withValues(alpha: 0.18),
+                    child: c.contactPhotoUrl.isEmpty
+                        ? Text(c.contactName.isNotEmpty ? c.contactName[0].toUpperCase() : '?',
+                            style: const TextStyle(color: AppTheme.violet, fontSize: 32, fontWeight: FontWeight.bold))
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    c.contactName,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.ink),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'MM ID: ',
+                        style: TextStyle(color: AppTheme.ink.withValues(alpha: 0.6), fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        c.contactMmId.isNotEmpty ? c.contactMmId : 'N/A',
+                        style: const TextStyle(color: AppTheme.violet, fontWeight: FontWeight.bold),
+                      ),
+                      if (c.contactMmId.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: c.contactMmId));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('MM ID copied!')),
+                            );
+                          },
+                          child: const Icon(Icons.copy_rounded, size: 14, color: AppTheme.violet),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isOnline ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: isOnline ? Colors.green : Colors.grey,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isOnline ? 'Online' : 'Offline',
+                          style: TextStyle(
+                            color: isOnline ? Colors.green.shade700 : Colors.grey.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Divider(),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(_getRelationIcon(c.relationshipType), color: _getRelationColor(c.relationshipType)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Relationship', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(
+                              _pretty(c.relationshipType.name),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_month_rounded, color: AppTheme.sky),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Connected On', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            Text(
+                              _formatDate(c.addedAt),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ProfileScreen(
+                                  userId: c.contactUid,
+                                  viewerUid: currentUid,
+                                  contact: c,
+                                ),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text('View Profile'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.of(context).pop();
+                            final chatId = await fs.getOrCreateDirectChat(currentUid, c.contactUid);
+                            final chat = await fs.getChat(chatId);
+                            if (chat != null && context.mounted) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ChatDetailScreen(
+                                    chat: chat,
+                                    currentUid: currentUid,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.violet,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          child: const Text('Send Message'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ContactModel>>(
@@ -238,6 +469,60 @@ class _ContactList extends StatelessWidget {
             ),
           );
         }
+
+        if (status == ContactStatus.accepted) {
+          final grouped = <RelationshipType, List<ContactModel>>{};
+          for (var type in RelationshipType.values) {
+            grouped[type] = [];
+          }
+          for (var c in contacts) {
+            grouped[c.relationshipType]?.add(c);
+          }
+          final activeTypes = RelationshipType.values.where((type) => grouped[type]!.isNotEmpty).toList();
+
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            itemCount: activeTypes.length,
+            itemBuilder: (context, typeIdx) {
+              final type = activeTypes[typeIdx];
+              final list = grouped[type]!;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16, bottom: 8, left: 4),
+                    child: Row(
+                      children: [
+                        Icon(_getRelationIcon(type), color: _getRelationColor(type), size: 18),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_pretty(type.name)} (${list.length})',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: _getRelationColor(type),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ...list.map((c) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _ContactTile(
+                        name: c.contactName,
+                        photoUrl: c.contactPhotoUrl,
+                        subtitle: '',
+                        onTap: () => _showConnectionDetailsSheet(context, c, uid),
+                      ),
+                    );
+                  }),
+                ],
+              );
+            },
+          );
+        }
+
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           itemCount: contacts.length,
@@ -326,12 +611,13 @@ class _ContactTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink)),
-                Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.5))),
-                if (relation != null)
+                if (subtitle.isNotEmpty)
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.5))),
+                if (relation != null && relation!.isNotEmpty)
                   Text('Relation: $relation', style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.48))),
-                if (detail != null)
+                if (detail != null && detail!.isNotEmpty)
                   Text(detail!, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45))),
-                if (status != null)
+                if (status != null && status!.isNotEmpty)
                   Text(status!, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.45))),
               ],
             ),
@@ -348,3 +634,29 @@ String _formatDate(DateTime date) => '${date.day.toString().padLeft(2, '0')}/${d
 
 String _pretty(String value) =>
   value.isEmpty ? 'Unknown' : value[0].toUpperCase() + value.substring(1);
+
+IconData _getRelationIcon(RelationshipType type) {
+  switch (type) {
+    case RelationshipType.family:
+      return Icons.family_restroom_rounded;
+    case RelationshipType.partner:
+      return Icons.favorite_rounded;
+    case RelationshipType.friend:
+      return Icons.group_rounded;
+    case RelationshipType.other:
+      return Icons.star_rounded;
+  }
+}
+
+Color _getRelationColor(RelationshipType type) {
+  switch (type) {
+    case RelationshipType.family:
+      return Colors.orange;
+    case RelationshipType.partner:
+      return Colors.pink;
+    case RelationshipType.friend:
+      return AppTheme.violet;
+    case RelationshipType.other:
+      return Colors.blueGrey;
+  }
+}

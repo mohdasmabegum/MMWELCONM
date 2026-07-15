@@ -30,6 +30,13 @@ class FirestoreService {
         'lastActive': FieldValue.serverTimestamp(),
       });
 
+  Future<void> setShowOnline(String uid, bool showOnline) =>
+      _db.collection('users').doc(uid).update({
+        'showOnline': showOnline,
+        'status': showOnline ? 'online' : 'offline',
+        'lastActive': FieldValue.serverTimestamp(),
+      });
+
   Stream<UserModel?> watchUser(String uid) => _db
       .collection('users')
       .doc(uid)

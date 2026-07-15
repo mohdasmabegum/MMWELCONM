@@ -67,7 +67,9 @@ class AuthService {
     final user = result.user;
     if (user != null) {
       try {
-        await _firestoreService.setUserStatus(user.uid, 'online');
+        final profile = await _firestoreService.getUser(user.uid);
+        final showOnline = profile?.showOnline ?? true;
+        await _firestoreService.setUserStatus(user.uid, showOnline ? 'online' : 'offline');
       } catch (_) {}
     }
     return user;

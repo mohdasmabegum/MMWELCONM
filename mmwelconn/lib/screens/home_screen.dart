@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mmwelconn/models/chat_model.dart';
 import 'package:mmwelconn/models/mood_model.dart';
@@ -103,6 +104,12 @@ class _HomePageState extends State<_HomePage> {
       _userSub = _fs.watchUser(uid).listen((user) {
         if (mounted) setState(() => _userModel = user);
       });
+      _fs.getUser(uid).then((userDoc) {
+        if (userDoc != null) {
+          final isOnline = userDoc.showOnline;
+          _fs.setUserStatus(uid, isOnline ? 'online' : 'offline');
+        }
+      });
     }
   }
 
@@ -115,7 +122,7 @@ class _HomePageState extends State<_HomePage> {
   Future<void> _setStatus(bool online) async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    await _fs.setUserStatus(uid, online ? 'online' : 'offline');
+    await _fs.setShowOnline(uid, online);
   }
 
   void _showMoodSheet() {
@@ -188,7 +195,7 @@ class _TopHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isOnline = (userModel?.status ?? 'online') == 'online';
+    final isOnline = userModel?.showOnline ?? true;
     return HoverCard(
       child: Container(
         padding: const EdgeInsets.all(24),
@@ -254,12 +261,40 @@ class _TopHero extends StatelessWidget {
                               ),
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          'MM ID: ${userModel?.mmId ?? '...'}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppTheme.ink.withValues(alpha: 0.58),
-                                fontWeight: FontWeight.w700,
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'MM ID: ',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.ink.withValues(alpha: 0.58),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            Text(
+                              userModel?.mmId ?? '...',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.violet,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            if (userModel?.mmId != null && userModel!.mmId.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: userModel!.mmId));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('MM ID copied to clipboard!')),
+                                  );
+                                },
+                                child: const Icon(
+                                  Icons.copy_rounded,
+                                  size: 14,
+                                  color: AppTheme.violet,
+                                ),
                               ),
+                            ]
+                          ],
                         ),
                       ],
                     ),

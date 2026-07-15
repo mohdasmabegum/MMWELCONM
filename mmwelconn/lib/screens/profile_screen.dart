@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
@@ -61,10 +62,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _setStatus(String status) async {
+  Future<void> _setShowOnline(bool showOnline) async {
     setState(() => _editingStatus = true);
     try {
-      await _fs.setUserStatus(widget.userId, status);
+      await _fs.setShowOnline(widget.userId, showOnline);
     } finally {
       if (mounted) setState(() => _editingStatus = false);
     }
@@ -178,14 +179,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppTheme.ink.withValues(alpha: 0.62)),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'MM ID: ${user.mmId}',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppTheme.ink.withValues(alpha: 0.72),
-                              fontWeight: FontWeight.w700,
-                            ),
+                          const SizedBox(height: 4),                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'MM ID: ',
+                                style: TextStyle(
+                                  color: AppTheme.ink.withValues(alpha: 0.72),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                user.mmId,
+                                style: const TextStyle(
+                                  color: AppTheme.violet,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              GestureDetector(
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: user.mmId));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('MM ID copied to clipboard!')),
+                                  );
+                                },
+                                child: const Icon(
+                                  Icons.copy_rounded,
+                                  size: 14,
+                                  color: AppTheme.violet,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           Wrap(
@@ -202,6 +227,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 icon: Icons.badge_rounded,
                                 label: user.mmId,
                                 color: AppTheme.sky,
+                                onTap: () {
+                                  Clipboard.setData(ClipboardData(text: user.mmId));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('MM ID copied to clipboard!')),
+                                  );
+                                },
                               ),
                               if (hasMood)
                                 _InfoChip(
@@ -220,10 +251,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             const SizedBox(height: 16),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              value: user.status == 'online',
+                              value: user.showOnline,
                               onChanged: _editingStatus
                                   ? null
-                                  : (value) => _setStatus(value ? 'online' : 'offline'),
+                                  : (value) => _setShowOnline(value),
                               title: const Text('Manual status'),
                               subtitle: const Text('Show yourself online or offline'),
                               activeColor: AppTheme.violet,
@@ -324,7 +355,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     label: 'Set online',
                                     icon: Icons.wifi_rounded,
                                     colors: const [Color(0xFF4CAF50), Color(0xFF81C784)],
-                                    onPressed: _editingStatus ? () {} : () => _setStatus('online'),
+                                    onPressed: _editingStatus ? () {} : () => _setShowOnline(true),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -333,7 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     label: 'Set offline',
                                     icon: Icons.wifi_off_rounded,
                                     colors: const [Color(0xFFEF5350), Color(0xFFFF8A80)],
-                                    onPressed: _editingStatus ? () {} : () => _setStatus('offline'),
+                                    onPressed: _editingStatus ? () {} : () => _setShowOnline(false),
                                   ),
                                 ),
                               ],
@@ -362,27 +393,31 @@ class _InfoChip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
-  const _InfoChip({required this.icon, required this.label, required this.color});
+  const _InfoChip({required this.icon, required this.label, required this.color, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(fontWeight: FontWeight.w700, color: color),
-          ),
-        ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(fontWeight: FontWeight.w700, color: color),
+            ),
+          ],
+        ),
       ),
     );
   }

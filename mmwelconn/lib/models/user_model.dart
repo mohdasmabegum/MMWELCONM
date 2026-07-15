@@ -11,6 +11,7 @@ class UserModel {
   final DateTime? currentMoodSetAt;
   final bool notificationsEnabled;
   final bool autoUpdate;
+  final bool showOnline;
   final DateTime createdAt;
   final DateTime lastActive;
 
@@ -25,6 +26,7 @@ class UserModel {
     this.currentMoodSetAt,
     this.notificationsEnabled = true,
     this.autoUpdate = true,
+    this.showOnline = true,
     required this.createdAt,
     required this.lastActive,
   });
@@ -39,11 +41,12 @@ class UserModel {
       profilePicture: d['profilePicture'] ?? '',
       status: d['status'] ?? 'offline',
       currentMoodId: d['currentMoodId'],
-        currentMoodSetAt: d['currentMoodSetAt'] != null
+      currentMoodSetAt: d['currentMoodSetAt'] != null
           ? (d['currentMoodSetAt'] as Timestamp).toDate()
           : null,
       notificationsEnabled: d['notificationsEnabled'] ?? true,
       autoUpdate: d['autoUpdate'] ?? true,
+      showOnline: d['showOnline'] ?? true,
       createdAt: d['createdAt'] != null
           ? (d['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -57,13 +60,14 @@ class UserModel {
         'uid': uid,
         'mmId': mmId,
         'name': name,
-      'email': email,
-      'profilePicture': profilePicture,
+        'email': email,
+        'profilePicture': profilePicture,
         'status': status,
         'currentMoodId': currentMoodId,
         'currentMoodSetAt': currentMoodSetAt != null ? Timestamp.fromDate(currentMoodSetAt!) : null,
         'notificationsEnabled': notificationsEnabled,
         'autoUpdate': autoUpdate,
+        'showOnline': showOnline,
         'createdAt': Timestamp.fromDate(createdAt),
         'lastActive': Timestamp.fromDate(lastActive),
       };
