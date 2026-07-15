@@ -299,6 +299,8 @@ class AuthField extends StatelessWidget {
   final IconData icon;
   final bool obscureText;
   final TextInputType keyboardType;
+  final ValueChanged<String>? onSubmitted;
+  final TextInputAction? textInputAction;
 
   const AuthField({
     super.key,
@@ -307,6 +309,8 @@ class AuthField extends StatelessWidget {
     required this.icon,
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
+    this.onSubmitted,
+    this.textInputAction,
   });
 
   @override
@@ -315,6 +319,8 @@ class AuthField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
+      onSubmitted: onSubmitted,
+      textInputAction: textInputAction,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),

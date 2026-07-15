@@ -174,16 +174,76 @@ Future<void> showAccountCreatedDialog(
   return showDialog(
     context: context,
     barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      title: const Text('Account Created!'),
-      content: const Text('Your account has been successfully created. Please log in to continue.'),
-      actions: [
-        TextButton(
-          onPressed: onGoToLogin,
-          child: const Text('Go to Login'),
+    builder: (context) => Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
         ),
-      ],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF4CAF50), Color(0xFF81C784)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x334CAF50),
+                    blurRadius: 16,
+                    offset: Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.check_rounded,
+                color: Colors.white,
+                size: 38,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Account Created!',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.ink,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your account has been successfully created. Please log in to continue.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: onGoToLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.violet,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Go to Login'),
+              ),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }

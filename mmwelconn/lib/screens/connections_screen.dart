@@ -610,7 +610,7 @@ class _ContactTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.ink)),
+                Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.ink)),
                 if (subtitle.isNotEmpty)
                   Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.ink.withValues(alpha: 0.5))),
                 if (relation != null && relation!.isNotEmpty)

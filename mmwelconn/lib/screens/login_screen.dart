@@ -138,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               label: 'Email address',
                               icon: Icons.email_rounded,
                               keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
                             ),
                             const SizedBox(height: 16),
                             AuthField(
@@ -145,6 +146,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               label: 'Password',
                               icon: Icons.lock_rounded,
                               obscureText: true,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) => _loading ? null : _login(),
                             ),
                             const SizedBox(height: 22),
                             HoverActionButton(
@@ -183,22 +186,72 @@ Future<void> showAuthSuccess(
   required String title,
   required String subtitle,
   required List<Color> colors,
-}) {
-  return showDialog(
+}) async {
+  showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      title: Text(title),
-      content: Text(subtitle),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('OK'),
+    barrierDismissible: false,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: colors,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: colors.first.withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Colors.white,
+                  size: 38,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.ink,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.ink.withValues(alpha: 0.65),
+                ),
+              ),
+            ],
+          ),
         ),
-      ],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      backgroundColor: Colors.white,
-      titleTextStyle: const TextStyle(color: Colors.black, fontSize: 20, fontWeight: FontWeight.bold),
-      contentTextStyle: const TextStyle(color: Colors.black87, fontSize: 16),
-    ),
+      );
+    },
   );
+  await Future.delayed(const Duration(milliseconds: 1600));
+  if (context.mounted) {
+    Navigator.of(context).pop();
+  }
 }
