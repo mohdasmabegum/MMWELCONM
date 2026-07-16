@@ -45,9 +45,9 @@ const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases
 
 const body = JSON.stringify({
   fields: {
-    latest: { stringValue: '1.2.1' },
+    latest: { stringValue: '1.3.0' },
     releaseDate: { stringValue: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) },
-    releaseNotes: { stringValue: '- Fixed contact accept permission denied error\n- Fixed chat not appearing after accepting request\n- Added in-app popup notifications (new request, accepted, new message, welcome)\n- Notifications slide in from top with icon and dismiss button\n- Auto-update notification on app launch when new version available' }
+    releaseNotes: { stringValue: '- Added Schedules & Event Reminders directly from chats\n- Integrated full-screen alert dialogs with Snooze/Complete options\n- Added multi-message selection and bulk message deletion\n- Added direct image sharing externally using native share sheets\n- Added per-chat online status privacy disclosures' }
   }
 });
 
@@ -65,7 +65,7 @@ const req = https.request(url, options, (res) => {
   res.on('data', chunk => data += chunk);
   res.on('end', () => {
     if (res.statusCode === 200) {
-      console.log('app_config/version updated to 1.2.0 ✓');
+      console.log('app_config/version updated to 1.3.0 ✓');
     } else {
       console.error(`HTTP ${res.statusCode}: ${data}`);
       process.exit(1);
