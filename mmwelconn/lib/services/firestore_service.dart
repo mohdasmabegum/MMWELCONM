@@ -545,4 +545,15 @@ class FirestoreService {
         list.sort((a, b) => a.remindAt.compareTo(b.remindAt));
         return list;
       });
+
+  Stream<ChatModel?> watchChat(String chatId) => _db
+      .collection('chats')
+      .doc(chatId)
+      .snapshots()
+      .map((doc) => doc.exists ? ChatModel.fromDoc(doc) : null);
+
+  Future<void> updateOnlineDisclosure(String chatId, String uid, bool disclose) =>
+      _db.collection('chats').doc(chatId).update({
+        'discloseOnlineStatus.$uid': disclose,
+      });
 }

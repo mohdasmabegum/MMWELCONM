@@ -13,6 +13,7 @@ class ChatModel {
   final String? lastSenderId;
   final DateTime? lastMessageAt;
   final Map<String, int> unreadCount;
+  final Map<String, bool> discloseOnlineStatus;
 
   const ChatModel({
     required this.id,
@@ -25,6 +26,7 @@ class ChatModel {
     this.lastSenderId,
     this.lastMessageAt,
     this.unreadCount = const {},
+    this.discloseOnlineStatus = const {},
   });
 
   factory ChatModel.fromDoc(DocumentSnapshot doc) {
@@ -44,6 +46,7 @@ class ChatModel {
           ? (d['lastMessageAt'] as Timestamp).toDate()
           : null,
       unreadCount: Map<String, int>.from(d['unreadCount'] ?? {}),
+      discloseOnlineStatus: Map<String, bool>.from(d['discloseOnlineStatus'] ?? {}),
     );
   }
 
@@ -58,6 +61,7 @@ class ChatModel {
         'lastMessageAt':
             lastMessageAt != null ? Timestamp.fromDate(lastMessageAt!) : null,
         'unreadCount': unreadCount,
+        'discloseOnlineStatus': discloseOnlineStatus,
       };
 }
 

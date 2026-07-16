@@ -379,45 +379,70 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                     ],
                   ),
                 )
-              else if (_otherUid.isEmpty)
-                _AppBar(
-                  title: _otherName,
-                  onDeleteChat: _confirmDeleteChat,
-                )
               else
-                StreamBuilder<UserModel?>(
-                  stream: _fs.watchUser(_otherUid),
-                  builder: (context, snap) {
-                    final user = snap.data;
-                    return _AppBar(
-                      title: _otherName,
-                      subtitle: user == null
-                          ? 'Offline'
-                          : user.hasActiveMood && user.currentMoodId != null
-                              ? 'Mood: ${user.currentMoodId} • ${user.status}'
+                StreamBuilder<ChatModel?>(
+                  stream: _fs.watchChat(widget.chat.id),
+                  initialData: widget.chat,
+                  builder: (context, chatSnap) {
+                    final chat = chatSnap.data ?? widget.chat;
+                    final discloseSelf = chat.discloseOnlineStatus[widget.currentUid] ?? true;
+                    final discloseOther = chat.discloseOnlineStatus[_otherUid] ?? true;
+
+                    if (_otherUid.isEmpty) {
+                      return _AppBar(
+                        title: _otherName,
+                        onDeleteChat: _confirmDeleteChat,
+                        discloseOnline: discloseSelf,
+                        onToggleDisclose: (val) => _fs.updateOnlineDisclosure(chat.id, widget.currentUid, val),
+                      );
+                    }
+
+                    return StreamBuilder<UserModel?>(
+                      stream: _fs.watchUser(_otherUid),
+                      builder: (context, snap) {
+                        final user = snap.data;
+                        final String finalStatus;
+                        if (!discloseOther) {
+                          finalStatus = 'Offline';
+                        } else {
+                          finalStatus = user == null
+                              ? 'Offline'
                               : user.status == 'online'
                                   ? 'Online'
-                                  : 'Offline',
-                      photoUrl: widget.chat.participantProfileImageUrls[_otherUid] ?? user?.profileImageUrl ?? '',
-                      onDeleteChat: _confirmDeleteChat,
-                      onTitleTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => ProfileScreen(
-                              userId: _otherUid,
-                              viewerUid: widget.currentUid,
-                              contact: ContactModel(
-                                id: _otherUid,
-                                ownerUid: widget.currentUid,
-                                contactUid: _otherUid,
-                                contactName: _otherName,
-                                contactPhotoUrl: widget.chat.participantProfileImageUrls[_otherUid] ?? user?.profileImageUrl ?? '',
-                                addedAt: DateTime.now(),
-                                relationshipType: RelationshipType.friend,
-                                status: ContactStatus.accepted,
+                                  : 'Offline';
+                        }
+                        
+                        final subtitle = user != null && user.hasActiveMood && user.currentMoodId != null
+                            ? 'Mood: ${user.currentMoodId} • $finalStatus'
+                            : finalStatus;
+
+                        return _AppBar(
+                          title: _otherName,
+                          subtitle: subtitle,
+                          photoUrl: chat.participantProfileImageUrls[_otherUid] ?? user?.profileImageUrl ?? '',
+                          onDeleteChat: _confirmDeleteChat,
+                          discloseOnline: discloseSelf,
+                          onToggleDisclose: (val) => _fs.updateOnlineDisclosure(chat.id, widget.currentUid, val),
+                          onTitleTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ProfileScreen(
+                                  userId: _otherUid,
+                                  viewerUid: widget.currentUid,
+                                  contact: ContactModel(
+                                    id: _otherUid,
+                                    ownerUid: widget.currentUid,
+                                    contactUid: _otherUid,
+                                    contactName: _otherName,
+                                    contactPhotoUrl: chat.participantProfileImageUrls[_otherUid] ?? user?.profileImageUrl ?? '',
+                                    addedAt: DateTime.now(),
+                                    relationshipType: RelationshipType.friend,
+                                    status: ContactStatus.accepted,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
+                            );
+                          },
                         );
                       },
                     );
@@ -487,6 +512,8 @@ class _AppBar extends StatelessWidget {
   final String? photoUrl;
   final VoidCallback? onTitleTap;
   final VoidCallback? onDeleteChat;
+  final bool discloseOnline;
+  final ValueChanged<bool>? onToggleDisclose;
   
   const _AppBar({
     required this.title,
@@ -494,6 +521,8 @@ class _AppBar extends StatelessWidget {
     this.photoUrl,
     this.onTitleTap,
     this.onDeleteChat,
+    this.discloseOnline = true,
+    this.onToggleDisclose,
   });
 
   @override
@@ -536,24 +565,45 @@ class _AppBar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          if (onDeleteChat != null)
+          if (onDeleteChat != null || onToggleDisclose != null)
             PopupMenuButton<String>(
               onSelected: (value) {
-                if (value == 'delete') {
+                if (value == 'delete' && onDeleteChat != null) {
                   onDeleteChat!();
+                } else if (value == 'toggleDisclose' && onToggleDisclose != null) {
+                  onToggleDisclose!(!discloseOnline);
                 }
               },
               itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_rounded, color: Colors.red, size: 20),
-                      SizedBox(width: 8),
-                      Text('Delete Chat', style: TextStyle(color: Colors.red)),
-                    ],
+                if (onDeleteChat != null)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_rounded, color: Colors.red, size: 20),
+                        SizedBox(width: 8),
+                        Text('Delete Chat', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
                   ),
-                ),
+                if (onToggleDisclose != null)
+                  PopupMenuItem(
+                    value: 'toggleDisclose',
+                    child: Row(
+                      children: [
+                        Icon(
+                          discloseOnline ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          color: AppTheme.violet,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          discloseOnline ? 'Hide Online Status' : 'Show Online Status',
+                          style: const TextStyle(color: AppTheme.ink),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
               icon: const Icon(Icons.more_vert_rounded, color: AppTheme.ink),
             ),
