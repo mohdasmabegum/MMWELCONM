@@ -8,6 +8,7 @@ import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/screens/profile_screen.dart';
 import 'package:mmwelconn/screens/reminders_screen.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ChatDetailScreen extends StatefulWidget {
   static String? activeChatId;
@@ -224,6 +225,15 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   );
                 },
               ),
+              if (msg.imageUrl != null && msg.imageUrl!.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.ios_share_rounded, color: AppTheme.violet),
+                  title: const Text('Share image'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Share.share(msg.imageUrl!, subject: 'Shared Photo');
+                  },
+                ),
             ],
           ),
         ),

@@ -6,6 +6,7 @@ import 'package:mmwelconn/models/mood_model.dart';
 import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PhotosScreen extends StatefulWidget {
   const PhotosScreen({super.key});
@@ -88,19 +89,39 @@ class _PhotosScreenState extends State<PhotosScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.share_rounded),
-                label: const Text('Share to Chat'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _sharePhoto(context, mood);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.violet,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.share_rounded),
+                    label: const Text('Share to Chat'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      _sharePhoto(context, mood);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.violet,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.ios_share_rounded),
+                    label: const Text('Share External'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Share.share(mood.moodPhotoUrl!, subject: 'MMWelConn Photo');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.pink,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
