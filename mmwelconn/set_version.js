@@ -7,18 +7,6 @@ try {
   token = execSync('firebase --token "" login:ci 2>nul', { stdio: 'pipe' }).toString().trim();
 } catch (_) {}
 
-// Use firebase-tools to get the current auth token
-const firebaseTools = require('firebase-tools');
-
-async function run() {
-  try {
-    const client = await firebaseTools.firestore;
-    console.log(Object.keys(require('firebase-tools')));
-  } catch(e) {
-    console.error(e.message);
-  }
-}
-
 // Simpler: use the REST API with the CLI token from ~/.config/configstore/firebase-tools.json
 const os = require('os');
 const path = require('path');
