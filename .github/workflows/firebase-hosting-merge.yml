@@ -11,10 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: npm ci && npm run build
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+      - name: Build Web
+        run: flutter build web --release
+        working-directory: mmwelconn
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MM_WELCONN }}
           channelId: live
           projectId: mm-welconn
+          entryPoint: mmwelconn
