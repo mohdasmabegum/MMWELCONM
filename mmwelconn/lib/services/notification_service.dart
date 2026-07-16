@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 enum NotifType { welcome, newRequest, accepted, newMessage }
@@ -30,6 +33,63 @@ class NotificationService {
 
   void show(InAppNotification notification) {
     _controller.add(notification);
+  }
+
+  Future<void> init() async {
+    // Listen to foreground messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      final notification = message.notification;
+      if (notification != null) {
+        show(InAppNotification(
+          title: notification.title ?? 'New Message',
+          body: notification.body ?? '',
+          type: NotifType.newMessage,
+        ));
+      }
+    });
+
+    // Listen to notification taps when app is backgrounded
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      debugPrint('Notification opened app: ${message.messageId}');
+    });
+
+    // Automatically update the token in backend (Firestore) when it is refreshed by Firebase
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await FirestoreService().updateUser(user.uid, {'fcmToken': token});
+        debugPrint('FCM Token automatically refreshed and updated in backend: $token');
+      }
+    });
+  }
+
+  Future<void> requestPermissionAndSaveToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        final token = await messaging.getToken();
+        if (token != null) {
+          await FirestoreService().updateUser(user.uid, {'fcmToken': token});
+          debugPrint('FCM Token successfully saved: $token');
+        }
+      }
+    } catch (e) {
+      debugPrint('Error requesting notification permission or fetching FCM token: $e');
+    }
   }
 
   void dispose() {

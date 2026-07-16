@@ -14,6 +14,7 @@ class UserModel {
   final bool showOnline;
   final DateTime createdAt;
   final DateTime lastActive;
+  final String? fcmToken;
 
   const UserModel({
     required this.uid,
@@ -29,6 +30,7 @@ class UserModel {
     this.showOnline = true,
     required this.createdAt,
     required this.lastActive,
+    this.fcmToken,
   });
 
   factory UserModel.fromDoc(DocumentSnapshot doc) {
@@ -53,6 +55,7 @@ class UserModel {
       lastActive: d['lastActive'] != null
           ? (d['lastActive'] as Timestamp).toDate()
           : DateTime.now(),
+      fcmToken: d['fcmToken'],
     );
   }
 
@@ -70,6 +73,7 @@ class UserModel {
         'showOnline': showOnline,
         'createdAt': Timestamp.fromDate(createdAt),
         'lastActive': Timestamp.fromDate(lastActive),
+        'fcmToken': fcmToken,
       };
 
   String get profileImageUrl => profilePicture;

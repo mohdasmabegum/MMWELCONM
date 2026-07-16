@@ -39,6 +39,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
+      // Request/update notification permission & save FCM token
+      NotificationService().requestPermissionAndSaveToken();
+
       _fs.getUser(uid).then((userDoc) {
         if (userDoc != null) {
           final isOnline = userDoc.showOnline;

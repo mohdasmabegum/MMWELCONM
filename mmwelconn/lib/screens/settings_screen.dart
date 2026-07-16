@@ -8,6 +8,7 @@ import 'package:mmwelconn/screens/requests_screen.dart';
 import 'package:mmwelconn/screens/profile_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
+import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -209,6 +210,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   ? null
                                   : (value) {
                                       _setPref(uid, 'notificationsEnabled', value);
+                                      if (value) {
+                                        NotificationService().requestPermissionAndSaveToken();
+                                      }
                                     },
                               title: const Text('Notifications'),
                               subtitle: const Text('Receive app alerts and updates'),

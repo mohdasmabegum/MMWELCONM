@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:mmwelconn/firebase_options.dart';
 import 'package:mmwelconn/screens/auth_landing_screen.dart';
 import 'package:mmwelconn/screens/home_screen.dart';
@@ -9,11 +10,22 @@ import 'package:mmwelconn/screens/register_screen.dart';
 import 'package:mmwelconn/screens/splash_screen.dart';
 import 'package:mmwelconn/services/notification_service.dart';
 
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await NotificationService().init();
+
   runApp(const MyApp());
 }
 
