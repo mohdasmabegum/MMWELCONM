@@ -132,6 +132,7 @@ void main() {
           chatType: type,
           participantIds: ['u1', 'u2'],
           participantNames: {'u1': 'Alice', 'u2': 'Bob'},
+          participantProfileImageUrls: const {'u1': '', 'u2': ''},
           lastMessage: lastMsg,
           lastMessageAt: lastAt,
           unreadCount: {'u1': 0, 'u2': 2},
@@ -333,6 +334,7 @@ void main() {
         id: 'c1',
         participantIds: ['u1', 'u2'],
         participantNames: {'u1': 'Alice', 'u2': 'Bob'},
+        participantProfileImageUrls: const {'u1': '', 'u2': ''},
         unreadCount: {'u1': 3, 'u2': 0},
       );
       expect(chat.unreadCount['u1'], 3);
@@ -344,6 +346,7 @@ void main() {
         id: 'c1',
         participantIds: ['u1', 'u2'],
         participantNames: {},
+        participantProfileImageUrls: const {},
         unreadCount: {},
       );
       expect(chat.unreadCount['u1'], isNull);
