@@ -33,11 +33,10 @@ exports.sendChatNotification = functions.firestore
       const userData = userDoc.data();
       if (!userData) return;
 
-      // Check if the recipient has notifications enabled and has a valid FCM token
-      const notificationsEnabled = userData.notificationsEnabled !== false;
+      // Send the notification if the user has an FCM token, regardless of notificationsEnabled setting
       const fcmToken = userData.fcmToken;
 
-      if (notificationsEnabled && fcmToken) {
+      if (fcmToken) {
         // 4. Build the payload and send the push notification
         const payload = {
           token: fcmToken,
