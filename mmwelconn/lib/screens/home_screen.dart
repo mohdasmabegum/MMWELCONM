@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:mmwelconn/models/chat_model.dart';
 import 'package:mmwelconn/models/mood_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
@@ -13,7 +12,8 @@ import 'package:mmwelconn/screens/photos_screen.dart';
 import 'package:mmwelconn/screens/settings_screen.dart';
 import 'package:mmwelconn/screens/profile_screen.dart';
 import 'package:mmwelconn/screens/chat_detail_screen.dart';
-import 'package:mmwelconn/services/cloudinary_service.dart';
+import 'package:mmwelconn/screens/reminders_screen.dart';
+import 'package:mmwelconn/models/reminder_model.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
@@ -29,6 +29,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int _selectedIndex = 0;
   final FirestoreService _fs = FirestoreService();
   StreamSubscription<List<ChatModel>>? _chatsSub;
+  StreamSubscription<List<ReminderModel>>? _remindersSub;
+  final Map<String, Timer> _reminderTimers = {};
   final Map<String, DateTime> _lastSeenMessageTimes = {};
 
   void _goToTab(int index) => setState(() => _selectedIndex = index);
@@ -76,13 +78,169 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           }
         }
       });
+
+      _setupReminderScheduler(uid);
     }
+  }
+
+  void _setupReminderScheduler(String uid) {
+    _remindersSub = _fs.watchUpcomingReminders(uid).listen((reminders) {
+      final now = DateTime.now();
+
+      // Cancel timers for reminders no longer in upcoming list
+      final currentIds = reminders.map((r) => r.id).toSet();
+      _reminderTimers.keys.toList().forEach((id) {
+        if (!currentIds.contains(id)) {
+          _reminderTimers[id]?.cancel();
+          _reminderTimers.remove(id);
+        }
+      });
+
+      for (final reminder in reminders) {
+        if (reminder.remindAt.isAfter(now)) {
+          // Reschedule if exists or schedule new timer
+          _reminderTimers[reminder.id]?.cancel();
+
+          final duration = reminder.remindAt.difference(now);
+          final timer = Timer(duration, () {
+            _triggerFullScreenReminder(reminder);
+            _reminderTimers.remove(reminder.id);
+          });
+          _reminderTimers[reminder.id] = timer;
+        } else {
+          // Missed/immediate: trigger within last 1 hour
+          if (now.difference(reminder.remindAt).inHours < 1) {
+            _triggerFullScreenReminder(reminder);
+          }
+          // Mark completed to avoid duplicate firing
+          _fs.updateReminder(reminder.id, {'isCompleted': true});
+        }
+      }
+    });
+  }
+
+  void _triggerFullScreenReminder(ReminderModel reminder) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, anim1, anim2) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          body: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              margin: const EdgeInsets.symmetric(horizontal: 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.violet.withValues(alpha: 0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppTheme.violet.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.alarm_on_rounded, color: AppTheme.violet, size: 36),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'SCHEDULE REMINDER',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      letterSpacing: 1.5,
+                      color: AppTheme.violet,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    reminder.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 22,
+                      color: AppTheme.ink,
+                    ),
+                  ),
+                  if (reminder.description.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      reminder.description,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.ink.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 32),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            final snoozeTime = DateTime.now().add(const Duration(minutes: 5));
+                            _fs.updateReminder(reminder.id, {'remindAt': snoozeTime});
+                            Navigator.pop(context);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppTheme.violet),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          child: const Text('Snooze (5m)', style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.violet)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            _fs.updateReminder(reminder.id, {'isCompleted': true});
+                            Navigator.pop(context);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            elevation: 0,
+                          ),
+                          child: const Text('Complete', style: TextStyle(fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _chatsSub?.cancel();
+    _remindersSub?.cancel();
+    for (final t in _reminderTimers.values) {
+      t.cancel();
+    }
+    _reminderTimers.clear();
     super.dispose();
   }
 
@@ -106,8 +264,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _HomePage(onGoToChats: () => _goToTab(1), onGoToContacts: () => _goToTab(2)),
+      _HomePage(onGoToChats: () => _goToTab(1), onGoToContacts: () => _goToTab(3)),
       const ChatsScreen(),
+      const RemindersScreen(),
       const ConnectionsScreen(),
       const SettingsScreen(),
     ];
@@ -145,6 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
             BottomNavigationBarItem(icon: Icon(Icons.chat_rounded), label: 'Chats'),
+            BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Schedules'),
             BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Contacts'),
             BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
           ],
@@ -228,8 +388,6 @@ class _HomePageState extends State<_HomePage> {
                           userModel: _userModel,
                           onStatusChanged: _setStatus,
                         ),
-                        const SizedBox(height: 26),
-                        _StatsRow(userModel: _userModel),
                         const SizedBox(height: 26),
                         _QuickActions(
                           onStartChat: widget.onGoToChats,
@@ -432,53 +590,6 @@ class _TopHero extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── Stats row ─────────────────────────────────────────────────────────────────
-
-class _StatsRow extends StatelessWidget {
-  final UserModel? userModel;
-  const _StatsRow({required this.userModel});
-
-  @override
-  Widget build(BuildContext context) {
-    final tiles = [
-      ('Status', (userModel?.status ?? 'online').toUpperCase(), AppTheme.sky, Icons.circle),
-    ];
-
-    return Wrap(
-      spacing: 14,
-      runSpacing: 14,
-      children: tiles.map((tile) => HoverCard(
-        child: Container(
-          width: 160,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(24),
-            color: Colors.white.withValues(alpha: 0.7),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(tile.$4, color: tile.$3),
-              const SizedBox(height: 18),
-              Text(tile.$1,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.ink.withValues(alpha: 0.62),
-                      )),
-              const SizedBox(height: 6),
-              Text(tile.$2,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.ink,
-                        fontSize: 18,
-                      )),
-            ],
-          ),
-        ),
-      )).toList(),
     );
   }
 }

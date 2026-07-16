@@ -465,9 +465,7 @@ class _ChatCrudState extends State<_ChatCrud> {
               }
               final id = await widget.fs.getOrCreateDirectChat(
                 widget.uid,
-                _myName,
                 _otherUidCtrl.text.trim(),
-                _otherNameCtrl.text.trim(),
               );
               if (!context.mounted) return;
               setState(() {

@@ -5,6 +5,7 @@ import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/mood_model.dart';
 import 'package:mmwelconn/models/chat_model.dart';
+import 'package:mmwelconn/models/reminder_model.dart';
 import 'package:mmwelconn/services/storage_service.dart';
 
 class FirestoreService {
@@ -494,4 +495,54 @@ class FirestoreService {
     batch.delete(_db.collection('chats').doc(chatId));
     await batch.commit();
   }
+
+  // ── Reminders ─────────────────────────────────────────────────────────────
+
+  Future<void> createReminder(ReminderModel reminder) {
+    final docRef = reminder.id.isEmpty 
+        ? _db.collection('reminders').doc() 
+        : _db.collection('reminders').doc(reminder.id);
+    final toSave = ReminderModel(
+      id: docRef.id,
+      userId: reminder.userId,
+      title: reminder.title,
+      description: reminder.description,
+      remindAt: reminder.remindAt,
+      createdAt: reminder.createdAt,
+      isCompleted: reminder.isCompleted,
+    );
+    return docRef.set(toSave.toMap());
+  }
+
+  Future<void> updateReminder(String id, Map<String, dynamic> data) =>
+      _db.collection('reminders').doc(id).update(data);
+
+  Future<void> deleteReminder(String id) =>
+      _db.collection('reminders').doc(id).delete();
+
+  Stream<List<ReminderModel>> watchMyReminders(String uid) => _db
+      .collection('reminders')
+      .where('userId', isEqualTo: uid)
+      .snapshots()
+      .map((s) {
+        final list = s.docs.map(ReminderModel.fromDoc).toList();
+        list.sort((a, b) {
+          if (a.isCompleted != b.isCompleted) {
+            return a.isCompleted ? 1 : -1;
+          }
+          return a.remindAt.compareTo(b.remindAt);
+        });
+        return list;
+      });
+
+  Stream<List<ReminderModel>> watchUpcomingReminders(String uid) => _db
+      .collection('reminders')
+      .where('userId', isEqualTo: uid)
+      .where('isCompleted', isEqualTo: false)
+      .snapshots()
+      .map((s) {
+        final list = s.docs.map(ReminderModel.fromDoc).toList();
+        list.sort((a, b) => a.remindAt.compareTo(b.remindAt));
+        return list;
+      });
 }

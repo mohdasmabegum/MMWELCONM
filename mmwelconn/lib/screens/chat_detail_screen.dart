@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mmwelconn/models/chat_model.dart';
@@ -7,6 +6,7 @@ import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/screens/profile_screen.dart';
+import 'package:mmwelconn/screens/reminders_screen.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class ChatDetailScreen extends StatefulWidget {
@@ -24,6 +24,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   final FirestoreService _fs = FirestoreService();
   final TextEditingController _msgCtrl = TextEditingController();
   final ScrollController _scroll = ScrollController();
+  bool _selectionMode = false;
+  final Set<String> _selectedMessageIds = {};
 
   String get _myName =>
       widget.chat.participantNames[widget.currentUid] ?? 'Me';
@@ -196,6 +198,32 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                   _confirmDeleteMessage(msg);
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.checklist_rounded, color: AppTheme.violet),
+                title: const Text('Select multiple'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _selectionMode = true;
+                    _selectedMessageIds.add(msg.id);
+                  });
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.calendar_month_rounded, color: AppTheme.violet),
+                title: const Text('Add to Schedules'),
+                onTap: () {
+                  Navigator.pop(context);
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => AddReminderSheet(
+                      prefilledDescription: msg.text,
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -259,6 +287,50 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  void _confirmBulkDelete() {
+    if (_selectedMessageIds.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Messages?'),
+        content: Text('Are you sure you want to delete ${_selectedMessageIds.length} selected messages? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final ids = List<String>.from(_selectedMessageIds);
+              setState(() {
+                _selectionMode = false;
+                _selectedMessageIds.clear();
+              });
+              Navigator.pop(context);
+              for (var id in ids) {
+                await _fs.deleteMessage(widget.chat.id, id);
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _toggleMessageSelection(String msgId) {
+    setState(() {
+      if (_selectedMessageIds.contains(msgId)) {
+        _selectedMessageIds.remove(msgId);
+        if (_selectedMessageIds.isEmpty) {
+          _selectionMode = false;
+        }
+      } else {
+        _selectedMessageIds.add(msgId);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -266,7 +338,38 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              if (_otherUid.isEmpty)
+              if (_selectionMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.88),
+                    border: Border(bottom: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, color: AppTheme.ink),
+                        onPressed: () {
+                          setState(() {
+                            _selectionMode = false;
+                            _selectedMessageIds.clear();
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${_selectedMessageIds.length} Selected',
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.ink),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.delete_rounded, color: Colors.red),
+                        onPressed: _confirmBulkDelete,
+                      ),
+                    ],
+                  ),
+                )
+              else if (_otherUid.isEmpty)
                 _AppBar(
                   title: _otherName,
                   onDeleteChat: _confirmDeleteChat,
@@ -334,13 +437,22 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       reverse: true,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       itemCount: msgs.length,
-                      itemBuilder: (_, i) => GestureDetector(
-                        onLongPress: () => _showMessageOptions(msgs[i]),
-                        child: _MessageBubble(
-                          msg: msgs[i],
-                          isMe: msgs[i].senderId == widget.currentUid,
-                        ),
-                      ),
+                      itemBuilder: (_, i) {
+                        final msg = msgs[i];
+                        final isSelected = _selectedMessageIds.contains(msg.id);
+                        return GestureDetector(
+                          onTap: _selectionMode ? () => _toggleMessageSelection(msg.id) : null,
+                          onLongPress: _selectionMode 
+                              ? () => _toggleMessageSelection(msg.id) 
+                              : () => _showMessageOptions(msg),
+                          child: _MessageBubble(
+                            msg: msg,
+                            isMe: msg.senderId == widget.currentUid,
+                            selectionMode: _selectionMode,
+                            isSelected: isSelected,
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -444,8 +556,15 @@ class _AppBar extends StatelessWidget {
 class _MessageBubble extends StatelessWidget {
   final MessageModel msg;
   final bool isMe;
+  final bool selectionMode;
+  final bool isSelected;
 
-  const _MessageBubble({required this.msg, required this.isMe});
+  const _MessageBubble({
+    required this.msg,
+    required this.isMe,
+    this.selectionMode = false,
+    this.isSelected = false,
+  });
 
   Widget _buildStatusTicks(String status) {
     final bool seen = status == 'seen';
@@ -503,7 +622,7 @@ class _MessageBubble extends StatelessWidget {
       bottomLeft: Radius.circular(isMe ? 18 : 4),
       bottomRight: Radius.circular(isMe ? 4 : 18),
     );
-    return Align(
+    final bubble = Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 4),
@@ -596,6 +715,37 @@ class _MessageBubble extends StatelessWidget {
               ),
       ),
     );
+
+    if (selectionMode) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            if (!isMe) ...[
+              Checkbox(
+                value: isSelected,
+                shape: const CircleBorder(),
+                activeColor: AppTheme.violet,
+                onChanged: (_) {}, // handled by parent GestureDetector tap
+              ),
+              const SizedBox(width: 4),
+            ],
+            Expanded(child: bubble),
+            if (isMe) ...[
+              const SizedBox(width: 4),
+              Checkbox(
+                value: isSelected,
+                shape: const CircleBorder(),
+                activeColor: AppTheme.violet,
+                onChanged: (_) {}, // handled by parent GestureDetector tap
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+    return bubble;
   }
 }
 
