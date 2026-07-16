@@ -68,6 +68,58 @@ class _ChatTile extends StatelessWidget {
 
   const _ChatTile({required this.chat, required this.uid});
 
+  void _showChatOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.delete_rounded, color: Colors.red),
+                title: const Text('Delete chat'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteChat(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteChat(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Chat?'),
+        content: const Text('Are you sure you want to delete this chat and all its messages? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await FirestoreService().deleteChat(chat.id);
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final otherUserId = chat.participantIds.firstWhere((id) => id != uid, orElse: () => '');
@@ -83,6 +135,7 @@ class _ChatTile extends StatelessWidget {
       onTap: () => Navigator.of(context).push(buildPageRoute(
         ChatDetailScreen(chat: chat, currentUid: uid),
       )),
+      onLongPress: () => _showChatOptions(context),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(

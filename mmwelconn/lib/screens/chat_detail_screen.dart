@@ -135,6 +135,130 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
   }
 
+  void _confirmDeleteChat() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Chat?'),
+        content: const Text('Are you sure you want to delete this entire chat and all its messages? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await _fs.deleteChat(widget.chat.id);
+              if (mounted) {
+                Navigator.pop(context); // close dialog
+                Navigator.pop(context); // close chat screen
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMessageOptions(MessageModel msg) {
+    final bool isMe = msg.senderId == widget.currentUid;
+    final bool canEdit = isMe && (msg.imageUrl == null || msg.imageUrl!.isEmpty) &&
+        DateTime.now().difference(msg.createdAt).inMinutes < 15;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canEdit)
+                ListTile(
+                  leading: const Icon(Icons.edit_rounded, color: AppTheme.violet),
+                  title: const Text('Edit message'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showEditDialog(msg);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.delete_rounded, color: Colors.red),
+                title: const Text('Delete message'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteMessage(msg);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditDialog(MessageModel msg) {
+    final editCtrl = TextEditingController(text: msg.text);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit message'),
+        content: TextField(
+          controller: editCtrl,
+          decoration: const InputDecoration(
+            hintText: 'Enter new message...',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newText = editCtrl.text.trim();
+              if (newText.isNotEmpty && newText != msg.text) {
+                await _fs.editMessage(widget.chat.id, msg.id, newText);
+              }
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Save', style: TextStyle(color: AppTheme.violet)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteMessage(MessageModel msg) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete message?'),
+        content: const Text('Are you sure you want to delete this message? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await _fs.deleteMessage(widget.chat.id, msg.id);
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,7 +267,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           child: Column(
             children: [
               if (_otherUid.isEmpty)
-                _AppBar(title: _otherName)
+                _AppBar(
+                  title: _otherName,
+                  onDeleteChat: _confirmDeleteChat,
+                )
               else
                 StreamBuilder<UserModel?>(
                   stream: _fs.watchUser(_otherUid),
@@ -159,6 +286,7 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                   ? 'Online'
                                   : 'Offline',
                       photoUrl: widget.chat.participantProfileImageUrls[_otherUid] ?? user?.profileImageUrl ?? '',
+                      onDeleteChat: _confirmDeleteChat,
                       onTitleTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
@@ -206,9 +334,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                       reverse: true,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       itemCount: msgs.length,
-                      itemBuilder: (_, i) => _MessageBubble(
-                        msg: msgs[i],
-                        isMe: msgs[i].senderId == widget.currentUid,
+                      itemBuilder: (_, i) => GestureDetector(
+                        onLongPress: () => _showMessageOptions(msgs[i]),
+                        child: _MessageBubble(
+                          msg: msgs[i],
+                          isMe: msgs[i].senderId == widget.currentUid,
+                        ),
                       ),
                     );
                   },
@@ -233,7 +364,15 @@ class _AppBar extends StatelessWidget {
   final String? subtitle;
   final String? photoUrl;
   final VoidCallback? onTitleTap;
-  const _AppBar({required this.title, this.subtitle, this.photoUrl, this.onTitleTap});
+  final VoidCallback? onDeleteChat;
+  
+  const _AppBar({
+    required this.title,
+    this.subtitle,
+    this.photoUrl,
+    this.onTitleTap,
+    this.onDeleteChat,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -274,6 +413,28 @@ class _AppBar extends StatelessWidget {
               ],
             ),
           ),
+          const Spacer(),
+          if (onDeleteChat != null)
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'delete') {
+                  onDeleteChat!();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_rounded, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Text('Delete Chat', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+              icon: const Icon(Icons.more_vert_rounded, color: AppTheme.ink),
+            ),
         ],
       ),
     );
@@ -301,9 +462,10 @@ class _MessageBubble extends StatelessWidget {
             height: 12,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              color: seen ? const Color(0xFF00E5FF) : Colors.transparent,
               border: Border.all(color: color, width: 1),
             ),
-            child: Icon(Icons.check, size: 7, color: color),
+            child: Icon(Icons.check, size: 7, color: seen ? Colors.white : color),
           ),
           const SizedBox(width: 2),
           Container(
@@ -311,9 +473,10 @@ class _MessageBubble extends StatelessWidget {
             height: 12,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              color: seen ? const Color(0xFF00E5FF) : Colors.transparent,
               border: Border.all(color: color, width: 1),
             ),
-            child: Icon(Icons.check, size: 7, color: color),
+            child: Icon(Icons.check, size: 7, color: seen ? Colors.white : color),
           ),
         ],
       );
@@ -323,6 +486,7 @@ class _MessageBubble extends StatelessWidget {
         height: 12,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
+          color: Colors.transparent,
           border: Border.all(color: color, width: 1),
         ),
         child: Icon(Icons.check, size: 7, color: color),
@@ -374,11 +538,26 @@ class _MessageBubble extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (isMe)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 4, 8, 4),
-                      child: _buildStatusTicks(msg.status),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (msg.isEdited) ...[
+                          Text(
+                            'edited',
+                            style: TextStyle(
+                              color: (isMe ? Colors.white : AppTheme.ink).withValues(alpha: 0.55),
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        if (isMe) _buildStatusTicks(msg.status),
+                      ],
                     ),
+                  ),
                 ],
               )
             : Padding(
@@ -394,10 +573,24 @@ class _MessageBubble extends StatelessWidget {
                         fontSize: 15,
                       ),
                     ),
-                    if (isMe) ...[
-                      const SizedBox(height: 6),
-                      _buildStatusTicks(msg.status),
-                    ],
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (msg.isEdited) ...[
+                          Text(
+                            'edited',
+                            style: TextStyle(
+                              color: (isMe ? Colors.white : AppTheme.ink).withValues(alpha: 0.55),
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                        ],
+                        if (isMe) _buildStatusTicks(msg.status),
+                      ],
+                    ),
                   ],
                 ),
               ),

@@ -432,4 +432,66 @@ class FirestoreService {
       await batch.commit();
     }
   }
+
+  Future<void> deleteMessage(String chatId, String messageId) async {
+    final msgRef = _db.collection('chats').doc(chatId).collection('messages').doc(messageId);
+    await msgRef.delete();
+    
+    // Get the new latest message to update parent chat metadata
+    final latestMsgs = await _db.collection('chats').doc(chatId).collection('messages')
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .get();
+        
+    if (latestMsgs.docs.isNotEmpty) {
+      final latest = latestMsgs.docs.first.data();
+      final String text = latest['text'] ?? '';
+      final String? imageUrl = latest['imageUrl'];
+      final String lastMessage = (imageUrl != null && imageUrl.isNotEmpty && text.isEmpty) ? '📷 Photo' : text;
+      
+      await _db.collection('chats').doc(chatId).update({
+        'lastMessage': lastMessage,
+        'lastSenderId': latest['senderId'],
+        'lastMessageAt': latest['createdAt'],
+      });
+    } else {
+      await _db.collection('chats').doc(chatId).update({
+        'lastMessage': null,
+        'lastSenderId': null,
+        'lastMessageAt': null,
+      });
+    }
+  }
+
+  Future<void> editMessage(String chatId, String messageId, String newText) async {
+    final msgRef = _db.collection('chats').doc(chatId).collection('messages').doc(messageId);
+    await msgRef.update({
+      'text': newText,
+      'isEdited': true,
+    });
+    
+    // Also update parent chat metadata if it was the last message
+    final latestMsgs = await _db.collection('chats').doc(chatId).collection('messages')
+        .orderBy('createdAt', descending: true)
+        .limit(1)
+        .get();
+        
+    if (latestMsgs.docs.isNotEmpty && latestMsgs.docs.first.id == messageId) {
+      await _db.collection('chats').doc(chatId).update({
+        'lastMessage': newText,
+      });
+    }
+  }
+
+  Future<void> deleteChat(String chatId) async {
+    // Delete all messages subcollection documents
+    final msgs = await _db.collection('chats').doc(chatId).collection('messages').get();
+    final batch = _db.batch();
+    for (var doc in msgs.docs) {
+      batch.delete(doc.reference);
+    }
+    // Delete the chat document
+    batch.delete(_db.collection('chats').doc(chatId));
+    await batch.commit();
+  }
 }

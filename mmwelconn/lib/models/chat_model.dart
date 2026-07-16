@@ -69,6 +69,7 @@ class MessageModel {
   final String? imageUrl;
   final String status;
   final DateTime createdAt;
+  final bool isEdited;
 
   const MessageModel({
     required this.id,
@@ -78,6 +79,7 @@ class MessageModel {
     this.imageUrl,
     this.status = 'sent',
     required this.createdAt,
+    this.isEdited = false,
   });
 
   factory MessageModel.fromDoc(DocumentSnapshot doc) {
@@ -92,6 +94,7 @@ class MessageModel {
       createdAt: d['createdAt'] != null
           ? (d['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
+      isEdited: d['isEdited'] ?? false,
     );
   }
 
@@ -102,5 +105,6 @@ class MessageModel {
         if (imageUrl != null) 'imageUrl': imageUrl,
         'status': status,
         'createdAt': FieldValue.serverTimestamp(),
+        'isEdited': isEdited,
       };
 }

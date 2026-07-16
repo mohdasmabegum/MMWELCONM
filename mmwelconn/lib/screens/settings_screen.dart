@@ -72,7 +72,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             child: Row(
                               children: [
-                                const BrandLogo(size: 76),
+                                CircleAvatar(
+                                  radius: 38,
+                                  backgroundImage: (user?.profilePicture != null && user!.profilePicture.isNotEmpty)
+                                      ? NetworkImage(user.profilePicture)
+                                      : null,
+                                  backgroundColor: AppTheme.violet.withValues(alpha: 0.18),
+                                  child: (user?.profilePicture == null || user!.profilePicture.isEmpty)
+                                      ? Text(
+                                          (user?.name != null && user!.name.isNotEmpty)
+                                              ? user.name[0].toUpperCase()
+                                              : '?',
+                                          style: const TextStyle(
+                                            color: AppTheme.violet,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 28,
+                                          ),
+                                        )
+                                      : null,
+                                ),
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
