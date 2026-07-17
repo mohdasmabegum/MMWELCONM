@@ -67,7 +67,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> with SingleTicker
                             const BrandLogo(size: 220),
                             const SizedBox(height: 22),
                             Text(
-                              'mmwelconm',
+                              'MMWELCONM',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                                     fontWeight: FontWeight.w900,

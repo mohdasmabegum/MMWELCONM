@@ -670,7 +670,7 @@ class _TopHero extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'mmwelconm',
+                          'MMWELCONM',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 color: AppTheme.ink,

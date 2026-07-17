@@ -111,7 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Start your mmwelconm experience in a few seconds.',
+                              'Start your MMWELCONM experience in a few seconds.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: AppTheme.ink.withValues(alpha: 0.65),

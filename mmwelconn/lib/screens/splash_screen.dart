@@ -69,7 +69,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     const BrandLogo(size: 240),
                     const SizedBox(height: 26),
                     Text(
-                      'mmwelconm',
+                      'MMWELCONM',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2,
