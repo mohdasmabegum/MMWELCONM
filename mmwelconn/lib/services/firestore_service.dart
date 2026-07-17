@@ -621,6 +621,9 @@ class FirestoreService {
       'groupCreatedAt': FieldValue.serverTimestamp(),
       'groupCategory': groupCategory,
       'groupCreatedBy': creatorUid,
+      'lastMessage': 'Group created by ${myUser?.name ?? 'someone'}',
+      'lastSenderId': creatorUid,
+      'lastMessageAt': FieldValue.serverTimestamp(),
       'unreadCount': {for (final uid in allIds) uid: 0},
       'discloseOnlineStatus': {for (final uid in allIds) uid: true},
       'lockedBy': {for (final uid in allIds) uid: false},
@@ -646,4 +649,42 @@ class FirestoreService {
 
   Future<void> toggleChatHide(String chatId, String uid, bool hide) =>
       _db.collection('chats').doc(chatId).update({'hiddenBy.$uid': hide});
+
+  // --- TODO SECTION ---
+  Stream<List<Map<String, dynamic>>> watchTodos(String uid) {
+    return _db
+        .collection('users')
+        .doc(uid)
+        .collection('todos')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((s) => s.docs.map((d) => {'id': d.id, ...d.data()}).toList());
+  }
+
+  Future<void> addTodo(String uid, String title, String priority) async {
+    await _db.collection('users').doc(uid).collection('todos').add({
+      'title': title,
+      'priority': priority,
+      'isCompleted': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> toggleTodo(String uid, String todoId, bool isCompleted) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('todos')
+        .doc(todoId)
+        .update({'isCompleted': isCompleted});
+  }
+
+  Future<void> deleteTodo(String uid, String todoId) async {
+    await _db
+        .collection('users')
+        .doc(uid)
+        .collection('todos')
+        .doc(todoId)
+        .delete();
+  }
 }

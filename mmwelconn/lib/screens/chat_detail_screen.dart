@@ -1491,7 +1491,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
       case RelationshipType.family:
         return const LinearGradient(colors: [Color(0xFF047857), Color(0xFF10B981)]);
       case RelationshipType.partner:
-        return const LinearGradient(colors: [Color(0xFFE11D48), Color(0xFFF43F5E)]);
+        return const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFFF472B6)]);
       case RelationshipType.friend:
         return const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF8B5CF6)]);
       case RelationshipType.other:

@@ -13,6 +13,7 @@ import 'package:mmwelconm/screens/settings_screen.dart';
 import 'package:mmwelconm/screens/profile_screen.dart';
 import 'package:mmwelconm/screens/chat_detail_screen.dart';
 import 'package:mmwelconm/screens/reminders_screen.dart';
+import 'package:mmwelconm/screens/todo_screen.dart';
 import 'package:mmwelconm/models/reminder_model.dart';
 import 'package:mmwelconm/models/contact_model.dart';
 import 'package:mmwelconm/services/firestore_service.dart';
@@ -77,6 +78,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     title: senderName,
                     body: messageText,
                     type: NotifType.newMessage,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatDetailScreen(
+                            chat: chat,
+                            currentUid: uid,
+                          ),
+                        ),
+                      );
+                    },
                   ));
                 }
               } else {
@@ -91,6 +103,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       title: senderName,
                       body: messageText,
                       type: NotifType.newMessage,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatDetailScreen(
+                              chat: chat,
+                              currentUid: uid,
+                            ),
+                          ),
+                        );
+                      },
                     ));
                   }
                 }
@@ -347,9 +370,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final pages = [
-      _HomePage(onGoToChats: () => _goToTab(1), onGoToContacts: () => _goToTab(3)),
+      _HomePage(onGoToChats: () => _goToTab(1), onGoToContacts: () => _goToTab(4)),
       const ChatsScreen(),
       const RemindersScreen(),
+      const TodoScreen(),
       const ConnectionsScreen(),
       const SettingsScreen(),
     ];
@@ -361,36 +385,90 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildBottomNav() {
+    final tabs = [
+      {'icon': Icons.home_rounded, 'label': 'Home'},
+      {'icon': Icons.chat_rounded, 'label': 'Chats'},
+      {'icon': Icons.calendar_today_rounded, 'label': 'Schedules'},
+      {'icon': Icons.checklist_rtl_rounded, 'label': 'Tasks'},
+      {'icon': Icons.people_alt_rounded, 'label': 'Contacts'},
+      {'icon': Icons.settings_rounded, 'label': 'Settings'},
+    ];
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      height: 68,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        color: Colors.white.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(32),
+        color: const Color(0xFF1E1E2E).withValues(alpha: 0.85),
+        border: Border.all(
+          color: const Color(0xFFC084FC).withValues(alpha: 0.25),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: _goToTab,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: AppTheme.violet,
-          unselectedItemColor: AppTheme.ink.withValues(alpha: 0.52),
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.chat_rounded), label: 'Chats'),
-            BottomNavigationBarItem(icon: Icon(Icons.calendar_today_rounded), label: 'Schedules'),
-            BottomNavigationBarItem(icon: Icon(Icons.people_alt_rounded), label: 'Contacts'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings_rounded), label: 'Settings'),
-          ],
+        borderRadius: BorderRadius.circular(32),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(tabs.length, (idx) {
+            final isSelected = _selectedIndex == idx;
+            final item = tabs[idx];
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _goToTab(idx);
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutBack,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSelected ? 12 : 8,
+                        vertical: isSelected ? 6 : 4,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: isSelected
+                            ? const Color(0xFF7C3AED).withValues(alpha: 0.2)
+                            : Colors.transparent,
+                      ),
+                      child: Icon(
+                        item['icon'] as IconData,
+                        color: isSelected
+                            ? const Color(0xFFC084FC)
+                            : Colors.white.withValues(alpha: 0.45),
+                        size: isSelected ? 24 : 21,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item['label'] as String,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+                        color: isSelected
+                            ? const Color(0xFFC084FC)
+                            : Colors.white.withValues(alpha: 0.4),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
         ),
       ),
     );

@@ -160,7 +160,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> with SingleTicker
                               icon: Icons.android_rounded,
                               colors: const [Color(0xFF00C853), Color(0xFF64DD17)],
                               onPressed: () async {
-                                final url = Uri.parse('https://mm-welconn.web.app/app-release.apk');
+                                final url = Uri.parse('https://mm-welconm.web.app/app-release.apk');
                                 if (await canLaunchUrl(url)) {
                                   await launchUrl(url, mode: LaunchMode.externalApplication);
                                 }

@@ -404,52 +404,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ],
-                  if (_isMe) ...[
-                    const SizedBox(height: 16),
-                    HoverCard(
-                      child: Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          color: Colors.white.withValues(alpha: 0.72),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Quick actions',
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.ink,
-                                  ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: HoverActionButton(
-                                    label: 'Set online',
-                                    icon: Icons.wifi_rounded,
-                                    colors: const [Color(0xFF4CAF50), Color(0xFF81C784)],
-                                    onPressed: _editingStatus ? () {} : () => _setShowOnline(true),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: HoverActionButton(
-                                    label: 'Set offline',
-                                    icon: Icons.wifi_off_rounded,
-                                    colors: const [Color(0xFFEF5350), Color(0xFFFF8A80)],
-                                    onPressed: _editingStatus ? () {} : () => _setShowOnline(false),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+
                 ],
               );
             },

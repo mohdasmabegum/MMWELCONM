@@ -345,6 +345,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
                           onPressed: _logout,
                         ),
+                        const SizedBox(height: 24),
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '© ${DateTime.now().year} MMWelconm by MRA',
+                                style: TextStyle(
+                                  color: AppTheme.ink.withValues(alpha: 0.4),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'All rights reserved.',
+                                style: TextStyle(
+                                  color: AppTheme.ink.withValues(alpha: 0.3),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     );
                   },
