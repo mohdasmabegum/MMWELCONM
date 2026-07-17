@@ -3,12 +3,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mmwelconn/models/reminder_model.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/models/reminder_model.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 class OverlayPermissionHelper {
-  static const _channel = MethodChannel('com.mmwelconn.mmwelconn/overlay');
+  static const _channel = MethodChannel('com.mmwelconm.mmwelconm/overlay');
 
   static Future<bool> checkPermission() async {
     if (kIsWeb) return true;

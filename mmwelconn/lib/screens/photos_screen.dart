@@ -1,11 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mmwelconn/models/chat_model.dart';
-import 'package:mmwelconn/models/mood_model.dart';
-import 'package:mmwelconn/services/cloudinary_service.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/models/chat_model.dart';
+import 'package:mmwelconm/models/mood_model.dart';
+import 'package:mmwelconm/services/cloudinary_service.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 import 'package:share_plus/share_plus.dart';
 
 class PhotosScreen extends StatefulWidget {
@@ -112,7 +112,7 @@ class _PhotosScreenState extends State<PhotosScreen> {
                     label: const Text('Share External'),
                     onPressed: () {
                       Navigator.of(context).pop();
-                      Share.share(mood.moodPhotoUrl!, subject: 'MMWelConn Photo');
+                      Share.share(mood.moodPhotoUrl!, subject: 'mmwelconm Photo');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.pink,

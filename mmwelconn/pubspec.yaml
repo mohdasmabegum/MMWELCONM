@@ -1,5 +1,5 @@
-name: mmwelconn
-description: "MMWELCONN is a social connection app for mood sharing, chat, status updates, and friend connection."
+name: mmwelconm
+description: "mmwelconm is a social connection app for mood sharing, chat, status updates, and friend connection."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -38,15 +38,19 @@ dependencies:
   firebase_auth: ^6.5.3
   cloud_firestore: ^6.6.0
   firebase_messaging: ^16.4.1
-  firebase_storage: ^13.4.3
+  flutter_local_notifications: ^18.0.1
+  flutter_secure_storage: ^9.0.0
   image_picker: ^1.2.2
   flutter_contacts: ^1.1.9+1
   http: ^1.6.0
   vector_math: ^2.1.4
   share_plus: ^10.1.0
   home_widget: ^0.7.0
+  firebase_storage: ^13.4.3
   firebase_remote_config: ^6.5.3
   transparent_image: ^2.0.0
+  url_launcher: ^6.3.0
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

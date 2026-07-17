@@ -2,10 +2,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:mmwelconn/screens/register_screen.dart';
-import 'package:mmwelconn/services/auth_service.dart';
-import 'package:mmwelconn/services/notification_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/screens/register_screen.dart';
+import 'package:mmwelconm/services/auth_service.dart';
+import 'package:mmwelconm/services/notification_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -148,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Sign in to continue your MMWELCONN journey.',
+                              'Sign in to continue your mmwelconm journey.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: AppTheme.ink.withValues(alpha: 0.65),

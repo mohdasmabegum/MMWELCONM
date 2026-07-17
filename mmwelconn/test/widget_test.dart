@@ -1,12 +1,12 @@
-// MMWELCONN — Feature unit tests
+// mmwelconm — Feature unit tests
 // Tests models, business logic, helpers, and firestore service utilities
 // without requiring a live Firebase connection.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mmwelconn/models/contact_model.dart';
-import 'package:mmwelconn/models/chat_model.dart';
-import 'package:mmwelconn/models/mood_model.dart';
-import 'package:mmwelconn/models/user_model.dart';
+import 'package:mmwelconm/models/contact_model.dart';
+import 'package:mmwelconm/models/chat_model.dart';
+import 'package:mmwelconm/models/mood_model.dart';
+import 'package:mmwelconm/models/user_model.dart';
 
 void main() {
   // ── UserModel ─────────────────────────────────────────────────────────────

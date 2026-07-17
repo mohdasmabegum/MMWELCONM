@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mmwelconn/screens/login_screen.dart';
-import 'package:mmwelconn/services/auth_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/screens/login_screen.dart';
+import 'package:mmwelconm/services/auth_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -111,7 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'Start your MMWELCONN experience in a few seconds.',
+                              'Start your mmwelconm experience in a few seconds.',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                     color: AppTheme.ink.withValues(alpha: 0.65),

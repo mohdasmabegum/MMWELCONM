@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AuthLandingScreen extends StatefulWidget {
@@ -67,7 +67,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> with SingleTicker
                             const BrandLogo(size: 220),
                             const SizedBox(height: 22),
                             Text(
-                              'MMWELCONN',
+                              'mmwelconm',
                               textAlign: TextAlign.center,
                               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                                     fontWeight: FontWeight.w900,

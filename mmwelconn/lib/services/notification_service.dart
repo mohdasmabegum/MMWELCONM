@@ -2,8 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 enum NotifType { welcome, newRequest, accepted, newMessage }
 

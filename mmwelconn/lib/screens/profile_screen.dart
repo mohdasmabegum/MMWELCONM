@@ -5,12 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:mmwelconn/models/contact_model.dart';
-import 'package:mmwelconn/models/user_model.dart';
-import 'package:mmwelconn/services/cloudinary_service.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/screens/chat_detail_screen.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/models/contact_model.dart';
+import 'package:mmwelconm/models/user_model.dart';
+import 'package:mmwelconm/services/cloudinary_service.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/screens/chat_detail_screen.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String userId;

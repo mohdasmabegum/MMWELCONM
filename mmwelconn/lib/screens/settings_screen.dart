@@ -2,16 +2,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mmwelconn/models/user_model.dart';
-import 'package:mmwelconn/screens/connections_screen.dart';
-import 'package:mmwelconn/screens/photos_screen.dart';
-import 'package:mmwelconn/screens/requests_screen.dart';
-import 'package:mmwelconn/screens/profile_screen.dart';
-import 'package:mmwelconn/screens/privacy_settings_screen.dart';
-import 'package:mmwelconn/services/auth_service.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/services/notification_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/models/user_model.dart';
+import 'package:mmwelconm/screens/connections_screen.dart';
+import 'package:mmwelconm/screens/photos_screen.dart';
+import 'package:mmwelconm/screens/requests_screen.dart';
+import 'package:mmwelconm/screens/profile_screen.dart';
+import 'package:mmwelconm/screens/privacy_settings_screen.dart';
+import 'package:mmwelconm/services/auth_service.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/services/notification_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

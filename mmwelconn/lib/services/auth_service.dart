@@ -2,9 +2,9 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'package:mmwelconn/models/user_model.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/services/notification_service.dart';
+import 'package:mmwelconm/models/user_model.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/services/notification_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -105,7 +105,7 @@ class AuthService {
       await _auth.signOut();
       // Trigger welcome notification after successful registration
       NotificationService().show(InAppNotification(
-        title: 'Welcome to MMWELCONN! 🎉',
+        title: 'Welcome to mmwelconm! 🎉',
         body: 'Your account is ready. Start connecting with people!',
         type: NotifType.welcome,
       ));

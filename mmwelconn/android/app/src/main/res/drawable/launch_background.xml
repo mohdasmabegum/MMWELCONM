@@ -11,6 +11,6 @@
     </item>
 
     <item
-        android:drawable="@drawable/mmwelconn_splash_logo"
+        android:drawable="@drawable/mmwelconm_splash_logo"
         android:gravity="center" />
 </layer-list>

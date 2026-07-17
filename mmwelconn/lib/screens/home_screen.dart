@@ -3,21 +3,21 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mmwelconn/models/chat_model.dart';
-import 'package:mmwelconn/models/mood_model.dart';
-import 'package:mmwelconn/models/user_model.dart';
-import 'package:mmwelconn/screens/chats_screen.dart';
-import 'package:mmwelconn/screens/connections_screen.dart';
-import 'package:mmwelconn/screens/photos_screen.dart';
-import 'package:mmwelconn/screens/settings_screen.dart';
-import 'package:mmwelconn/screens/profile_screen.dart';
-import 'package:mmwelconn/screens/chat_detail_screen.dart';
-import 'package:mmwelconn/screens/reminders_screen.dart';
-import 'package:mmwelconn/models/reminder_model.dart';
-import 'package:mmwelconn/models/contact_model.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/services/notification_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/models/chat_model.dart';
+import 'package:mmwelconm/models/mood_model.dart';
+import 'package:mmwelconm/models/user_model.dart';
+import 'package:mmwelconm/screens/chats_screen.dart';
+import 'package:mmwelconm/screens/connections_screen.dart';
+import 'package:mmwelconm/screens/photos_screen.dart';
+import 'package:mmwelconm/screens/settings_screen.dart';
+import 'package:mmwelconm/screens/profile_screen.dart';
+import 'package:mmwelconm/screens/chat_detail_screen.dart';
+import 'package:mmwelconm/screens/reminders_screen.dart';
+import 'package:mmwelconm/models/reminder_model.dart';
+import 'package:mmwelconm/models/contact_model.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/services/notification_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 class HomeScreen extends StatefulWidget {
   final int initialTab;
@@ -485,7 +485,7 @@ class _HomePageState extends State<_HomePage> {
                         ),
                         const SizedBox(height: 48),
                         Text(
-                          'Copyright of my app by MMWelconn by MRA',
+                          'Copyright of my app by mmwelconm by MRA',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppTheme.ink.withValues(alpha: 0.38),
@@ -568,7 +568,7 @@ class _TopHero extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'MMWELCONN',
+                          'mmwelconm',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 color: AppTheme.ink,

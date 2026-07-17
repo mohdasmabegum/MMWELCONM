@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -69,7 +69,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     const BrandLogo(size: 240),
                     const SizedBox(height: 26),
                     Text(
-                      'MMWELCONN',
+                      'mmwelconm',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                             fontWeight: FontWeight.w900,
                             letterSpacing: 2,

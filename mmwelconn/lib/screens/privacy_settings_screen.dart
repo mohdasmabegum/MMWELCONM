@@ -1,10 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mmwelconn/models/user_model.dart';
-import 'package:mmwelconn/services/firestore_service.dart';
-import 'package:mmwelconn/widgets/app_brand.dart';
-import 'package:mmwelconn/screens/settings_screen.dart';
+import 'package:mmwelconm/models/user_model.dart';
+import 'package:mmwelconm/services/firestore_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
+import 'package:mmwelconm/screens/settings_screen.dart';
 
 class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});

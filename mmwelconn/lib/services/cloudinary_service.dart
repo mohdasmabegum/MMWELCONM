@@ -14,7 +14,7 @@ class CloudinaryService {
   static Future<String> uploadFile(File file, String uid) async {
     final request = http.MultipartRequest('POST', Uri.parse(_baseUrl));
     request.fields['upload_preset'] = _uploadPreset;
-    request.fields['folder'] = 'mmwelconn/users/$uid';
+    request.fields['folder'] = 'mmwelconm/users/$uid';
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
     return _send(request);
   }
@@ -23,7 +23,7 @@ class CloudinaryService {
   static Future<String> uploadBytes(Uint8List bytes, String uid, String filename) async {
     final request = http.MultipartRequest('POST', Uri.parse(_baseUrl));
     request.fields['upload_preset'] = _uploadPreset;
-    request.fields['folder'] = 'mmwelconn/users/$uid';
+    request.fields['folder'] = 'mmwelconm/users/$uid';
     request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
     return _send(request);
   }

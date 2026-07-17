@@ -82102,7 +82102,7 @@ return B.c.bj(r,s)},
 $S:519}
 A.KT.prototype={
 M(a){var s=null,r=A.ue(s,A.av4(B.a8,s,s,B.Ch),!0)
-return new A.zi(B.P4,A.ax(["/login",new A.a7I(),"/register",new A.a7J()],t.N,t.Ab),"MMWELCONN",r,!1,s)}}
+return new A.zi(B.P4,A.ax(["/login",new A.a7I(),"/register",new A.a7J()],t.N,t.Ab),"mmwelconm",r,!1,s)}}
 A.a7I.prototype={
 $1(a){return B.tQ},
 $S:520}
@@ -82176,7 +82176,7 @@ s===$&&A.a()
 r=i.r
 r===$&&A.a()
 q=A.a2(a).ok.c
-q=A.cf("MMWELCONN",k,k,k,q==null?k:q.Rx(B.v,B.bp,2),B.b8,k)
+q=A.cf("mmwelconm",k,k,k,q==null?k:q.Rx(B.v,B.bp,2),B.b8,k)
 p=A.a2(a).ok.w
 o=t.p
 s=A.iz(A.aaQ(A.fq(A.c([B.AJ,B.yL,q,B.yK,A.cf("Connect mood, moments, and people in a calm, elegant space.",k,k,k,p==null?k:p.F2(A.ab(B.c.aK(178.5),B.v.p()>>>16&255,B.v.p()>>>8&255,B.v.p()&255),1.5),B.b8,k),B.l3,A.asA(B.zs,B.GW,12,12)],o),B.b0,B.ad,B.at),r),s,k,!0)
@@ -82228,7 +82228,7 @@ $0(){return this.a.e=this.b},
 $S:0}
 A.V5.prototype={
 M(a){var s,r,q,p=null,o=A.eZ(34),n=A.ab(173,B.i.p()>>>16&255,B.i.p()>>>8&255,B.i.p()&255),m=A.qR(A.ab(184,B.i.p()>>>16&255,B.i.p()>>>8&255,B.i.p()&255)),l=A.a2(a).ok.f
-l=A.cf("MMWELCONN",p,p,p,l==null?p:l.n7(B.v,B.bp),p,p)
+l=A.cf("mmwelconm",p,p,p,l==null?p:l.n7(B.v,B.bp),p,p)
 s=A.a2(a).ok.z
 r=t.p
 s=A.tK(A.c([B.AK,B.OE,A.arh(A.fq(A.c([l,B.yM,A.cf("A calm social space for mood, chat, and connection.",p,p,p,s==null?p:s.c0(A.ab(168,B.v.p()>>>16&255,B.v.p()>>>8&255,B.v.p()&255)),p,p)],r),B.bf,B.ad,B.at),1)],r),B.ad,B.at,0)
@@ -82346,7 +82346,7 @@ p=A.qR(A.ab(B.c.aK(178.5),B.i.p()>>>16&255,B.i.p()>>>8&255,B.i.p()&255))
 o=A.a2(a).ok.e
 o=A.cf("Welcome back",j,j,j,o==null?j:o.n7(B.v,B.bp),B.b8,j)
 n=A.a2(a).ok.z
-n=A.cf("Sign in to continue your MMWELCONN journey.",j,j,j,n==null?j:n.c0(A.ab(166,B.v.p()>>>16&255,B.v.p()>>>8&255,B.v.p()&255)),B.b8,j)
+n=A.cf("Sign in to continue your mmwelconm journey.",j,j,j,n==null?j:n.c0(A.ab(166,B.v.p()>>>16&255,B.v.p()>>>8&255,B.v.p()&255)),B.b8,j)
 m=k.y
 l=m?"Signing in...":"Login"
 m=m?new A.ajH():k.ga8B()
@@ -82448,7 +82448,7 @@ p=A.qR(A.ab(B.c.aK(178.5),B.i.p()>>>16&255,B.i.p()>>>8&255,B.i.p()&255))
 o=A.a2(a).ok.e
 o=A.cf("Create account",j,j,j,o==null?j:o.n7(B.v,B.bp),B.b8,j)
 n=A.a2(a).ok.z
-n=A.cf("Start your MMWELCONN experience in a few seconds.",j,j,j,n==null?j:n.c0(A.ab(166,B.v.p()>>>16&255,B.v.p()>>>8&255,B.v.p()&255)),B.b8,j)
+n=A.cf("Start your mmwelconm experience in a few seconds.",j,j,j,n==null?j:n.c0(A.ab(166,B.v.p()>>>16&255,B.v.p()>>>8&255,B.v.p()&255)),B.b8,j)
 m=k.z
 l=m?"Creating...":"Register"
 m=m?new A.alj():k.gab6()
@@ -82517,7 +82517,7 @@ s===$&&A.a()
 r=o.w
 r===$&&A.a()
 q=A.a2(a).ok.c
-q=A.cf("MMWELCONN",n,n,n,q==null?n:q.Rx(B.v,B.bp,2),n,n)
+q=A.cf("mmwelconm",n,n,n,q==null?n:q.Rx(B.v,B.bp,2),n,n)
 p=A.a2(a).ok.w
 return A.AN(A.eb(n,A.jX(new A.cd(m,!1,A.iU(s,new A.an1(o),A.aaQ(A.fq(A.c([B.AI,B.dC,q,B.hZ,A.cf("Connect your mood with style",n,n,n,p==null?n:p.c0(A.ab(168,B.v.p()>>>16&255,B.v.p()>>>8&255,B.v.p()&255)),n,n),B.OI,A.eb(n,n,B.u,n,n,new A.cl(n,n,n,A.eZ(999),n,B.nM,B.ac),n,5,n,n,n,n,180)],t.p),B.b0,B.kk,B.at),r)),n),n,n),B.u,n,n,B.AC,n,n,n,n,n,n,n),n)}}
 A.an1.prototype={
