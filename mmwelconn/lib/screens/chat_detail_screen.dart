@@ -1845,123 +1845,164 @@ class _GlowingStatusIndicatorState extends State<GlowingStatusIndicator>
 
   @override
   Widget build(BuildContext context) {
-    final status = widget.status;
-    if (status == 'seen') {
-      return RotationTransition(
-        turns: _controller,
-        child: Container(
-          width: 12,
-          height: 12,
-          decoration: const BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Color(0xFF00F5FF),
-                blurRadius: 4,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: CustomPaint(
-            painter: _FourPointedStarPainter(color: const Color(0xFF00F5FF)),
-          ),
-        ),
-      );
-    } else if (status == 'delivered') {
-      return AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          final scale = 0.9 + (math.sin(_controller.value * math.pi * 2) * 0.1);
-          return Transform.scale(
-            scale: scale,
-            child: Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFE0F7FA).withValues(alpha: 0.3),
-                    blurRadius: 3,
-                  ),
-                ],
-              ),
-              child: CustomPaint(
-                painter: _DiamondPainter(color: const Color(0xFFE0F7FA)),
-              ),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final status = widget.status;
+        if (status == 'seen') {
+          return SizedBox(
+            width: 22,
+            height: 22,
+            child: CustomPaint(
+              painter: _SeenPulsarPainter(animationValue: _controller.value),
             ),
           );
-        },
-      );
-    } else {
-      return AnimatedBuilder(
-        animation: _controller,
-        builder: (context, child) {
-          final double opacity = 0.4 + (math.sin(_controller.value * math.pi * 2).abs() * 0.5);
-          return Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: opacity), width: 1.5),
+        } else if (status == 'delivered') {
+          return SizedBox(
+            width: 14,
+            height: 14,
+            child: CustomPaint(
+              painter: _DeliveredOrbitPainter(animationValue: _controller.value),
             ),
           );
-        },
-      );
-    }
+        } else {
+          return SizedBox(
+            width: 14,
+            height: 14,
+            child: CustomPaint(
+              painter: _SentOrbitPainter(animationValue: _controller.value),
+            ),
+          );
+        }
+      },
+    );
   }
 }
 
-class _FourPointedStarPainter extends CustomPainter {
-  final Color color;
-  _FourPointedStarPainter({required this.color});
+class _SentOrbitPainter extends CustomPainter {
+  final double animationValue;
+  _SentOrbitPainter({required this.animationValue});
 
   @override
   void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
     final paint = Paint()
-      ..color = color
+      ..color = Colors.white.withValues(alpha: 0.8)
       ..style = PaintingStyle.fill;
-    final path = Path();
-    final double cx = size.width / 2;
-    final double cy = size.height / 2;
-    final double r = size.width / 2;
+    
+    // Draw tiny core
+    canvas.drawCircle(center, 1.5, paint);
 
-    path.moveTo(cx, cy - r);
-    path.quadraticBezierTo(cx, cy, cx + r, cy);
-    path.quadraticBezierTo(cx, cy, cx, cy + r);
-    path.quadraticBezierTo(cx, cy, cx - r, cy);
-    path.quadraticBezierTo(cx, cy, cx, cy - r);
-    path.close();
-    canvas.drawPath(path, paint);
+    // Draw orbital path track
+    final trackPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawCircle(center, 5.0, trackPaint);
+
+    // Draw orbiting dot
+    final angle = animationValue * 2 * math.pi;
+    final dotX = center.dx + 5.0 * math.cos(angle);
+    final dotY = center.dy + 5.0 * math.sin(angle);
+    canvas.drawCircle(Offset(dotX, dotY), 1.6, paint);
   }
 
   @override
-  bool shouldRepaint(covariant _FourPointedStarPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _SentOrbitPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue;
 }
 
-class _DiamondPainter extends CustomPainter {
-  final Color color;
-  _DiamondPainter({required this.color});
+class _DeliveredOrbitPainter extends CustomPainter {
+  final double animationValue;
+  _DeliveredOrbitPainter({required this.animationValue});
 
   @override
   void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
     final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    final path = Path();
-    final double cx = size.width / 2;
-    final double cy = size.height / 2;
-    final double r = size.width / 2;
+      ..color = const Color(0xFF00E5FF)
+      ..style = PaintingStyle.fill;
+    
+    // Draw tiny core
+    canvas.drawCircle(center, 1.8, paint..color = const Color(0xFF00E5FF).withValues(alpha: 0.7));
 
-    path.moveTo(cx, cy - r);
-    path.lineTo(cx + r, cy);
-    path.lineTo(cx, cy + r);
-    path.lineTo(cx - r, cy);
+    // Draw double orbital dots on track
+    final trackPaint = Paint()
+      ..color = const Color(0xFF00E5FF).withValues(alpha: 0.15)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawCircle(center, 5.0, trackPaint);
+
+    final angle1 = animationValue * 2 * math.pi;
+    final angle2 = angle1 + math.pi;
+    
+    paint.color = const Color(0xFF00E5FF);
+    final dot1X = center.dx + 5.0 * math.cos(angle1);
+    final dot1Y = center.dy + 5.0 * math.sin(angle1);
+    canvas.drawCircle(Offset(dot1X, dot1Y), 1.8, paint);
+
+    final dot2X = center.dx + 5.0 * math.cos(angle2);
+    final dot2Y = center.dy + 5.0 * math.sin(angle2);
+    canvas.drawCircle(Offset(dot2X, dot2Y), 1.8, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _DeliveredOrbitPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue;
+}
+
+class _SeenPulsarPainter extends CustomPainter {
+  final double animationValue;
+  _SeenPulsarPainter({required this.animationValue});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final paint = Paint()
+      ..color = const Color(0xFFC084FC)
+      ..style = PaintingStyle.fill;
+
+    // 1. Draw expanding glow ripples
+    final double rippleProgress = (animationValue + 0.5) % 1.0;
+    final double rippleRadius = 4.0 + (rippleProgress * 6.0);
+    final double rippleOpacity = (1.0 - rippleProgress).clamp(0.0, 1.0);
+    
+    final ripplePaint = Paint()
+      ..color = const Color(0xFFC084FC).withValues(alpha: rippleOpacity * 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawCircle(center, rippleRadius, ripplePaint);
+
+    // 2. Draw rotating star in the center
+    final path = Path();
+    final double radius = 3.8 + (math.sin(animationValue * 2 * math.pi).abs() * 1.2);
+    final double rotationAngle = animationValue * 2 * math.pi;
+
+    for (int i = 0; i < 4; i++) {
+      final double angle = (i * math.pi / 2) + rotationAngle;
+      final double tipX = center.dx + radius * math.cos(angle);
+      final double tipY = center.dy + radius * math.sin(angle);
+
+      final double innerAngle = angle + (math.pi / 4);
+      final double innerX = center.dx + (radius * 0.3) * math.cos(innerAngle);
+      final double innerY = center.dy + (radius * 0.3) * math.sin(innerAngle);
+
+      if (i == 0) {
+        path.moveTo(tipX, tipY);
+      } else {
+        path.lineTo(tipX, tipY);
+      }
+      path.lineTo(innerX, innerY);
+    }
     path.close();
+    
+    paint.color = const Color(0xFFD8B4FE);
     canvas.drawPath(path, paint);
   }
 
   @override
-  bool shouldRepaint(covariant _DiamondPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _SeenPulsarPainter oldDelegate) =>
+      oldDelegate.animationValue != animationValue;
 }
 
 class AnimatingChatBackground extends StatefulWidget {
