@@ -345,17 +345,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
                           onPressed: _logout,
                         ),
-                        const SizedBox(height: 24),
-                        Center(
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          margin: const EdgeInsets.only(left: -20, right: -20, top: 24),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF1E1E2E).withValues(alpha: 0.01),
+                                const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                                const Color(0xFF1E1E2E).withValues(alpha: 0.01),
+                              ],
+                            ),
+                            border: Border(
+                              top: BorderSide(
+                                color: const Color(0xFFC084FC).withValues(alpha: 0.15),
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 '© ${DateTime.now().year} MMWelconm by MRA',
                                 style: TextStyle(
-                                  color: AppTheme.ink.withValues(alpha: 0.4),
+                                  color: AppTheme.ink.withValues(alpha: 0.65),
                                   fontSize: 12,
-                                  fontWeight: FontWeight.bold,
+                                  fontWeight: FontWeight.w800,
                                   letterSpacing: 1.2,
                                 ),
                               ),
@@ -363,14 +380,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(
                                 'All rights reserved.',
                                 style: TextStyle(
-                                  color: AppTheme.ink.withValues(alpha: 0.3),
+                                  color: AppTheme.ink.withValues(alpha: 0.4),
                                   fontSize: 10,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
                       ],
                     );
                   },

@@ -417,80 +417,106 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       {'icon': Icons.settings_rounded, 'label': 'Settings'},
     ];
 
+    const double itemHeight = 72.0;
+    const double paddingOffset = 16.0;
+
     return Container(
-      width: 68,
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      width: 72,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        color: const Color(0xFF1E1E2E).withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(36),
+        color: const Color(0xFF13141F).withValues(alpha: 0.92),
         border: Border.all(
-          color: const Color(0xFFC084FC).withValues(alpha: 0.25),
+          color: const Color(0xFFC084FC).withValues(alpha: 0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.18),
-            blurRadius: 24,
-            spreadRadius: 2,
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.25),
+            blurRadius: 30,
+            spreadRadius: 3,
             offset: const Offset(4, 0),
           ),
         ],
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: List.generate(tabs.length, (idx) {
-          final isSelected = _selectedIndex == idx;
-          final item = tabs[idx];
-          return GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              _goToTab(idx);
-            },
-            behavior: HitTestBehavior.opaque,
+      child: Stack(
+        children: [
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutBack,
+            left: 6,
+            right: 6,
+            top: paddingOffset + (_selectedIndex * itemHeight) + 4,
+            height: 64,
             child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeOutBack,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isSelected ? 12 : 8,
-                      vertical: isSelected ? 12 : 8,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: isSelected
-                          ? const Color(0xFF7C3AED).withValues(alpha: 0.2)
-                          : Colors.transparent,
-                    ),
-                    child: Icon(
-                      item['icon'] as IconData,
-                      color: isSelected
-                          ? const Color(0xFFC084FC)
-                          : Colors.white.withValues(alpha: 0.45),
-                      size: isSelected ? 24 : 21,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item['label'] as String,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
-                      color: isSelected
-                          ? const Color(0xFFC084FC)
-                          : Colors.white.withValues(alpha: 0.4),
-                      letterSpacing: 0.5,
-                    ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF7C3AED), Color(0xFFC084FC)],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFC084FC).withValues(alpha: 0.4),
+                    blurRadius: 14,
+                    spreadRadius: 1,
                   ),
                 ],
               ),
             ),
-          );
-        }),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: paddingOffset),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(tabs.length, (idx) {
+                final isSelected = _selectedIndex == idx;
+                final item = tabs[idx];
+                return GestureDetector(
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    _goToTab(idx);
+                  },
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    height: itemHeight,
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedScale(
+                          scale: isSelected ? 1.15 : 1.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: Icon(
+                            item['icon'] as IconData,
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.45),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item['label'] as String,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.45),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -582,15 +608,34 @@ class _HomePageState extends State<_HomePage> {
                             );
                           },
                         ),
-                        const SizedBox(height: 48),
-                        Center(
-                          child: Text(
-                            '© ${DateTime.now().year} MMWelconm by MRA',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.ink.withValues(alpha: 0.38),
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.8,
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          margin: const EdgeInsets.only(left: -24, right: -24, top: 48),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF1E1E2E).withValues(alpha: 0.01),
+                                const Color(0xFF7C3AED).withValues(alpha: 0.08),
+                                const Color(0xFF1E1E2E).withValues(alpha: 0.01),
+                              ],
+                            ),
+                            border: Border(
+                              top: BorderSide(
+                                color: const Color(0xFFC084FC).withValues(alpha: 0.15),
+                                width: 1.0,
+                              ),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              '© ${DateTime.now().year} MMWelconm by MRA',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.ink.withValues(alpha: 0.65),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
                             ),
                           ),
                         ),
