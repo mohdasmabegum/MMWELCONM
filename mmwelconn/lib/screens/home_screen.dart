@@ -14,30 +14,37 @@ import 'package:mmwelconn/screens/profile_screen.dart';
 import 'package:mmwelconn/screens/chat_detail_screen.dart';
 import 'package:mmwelconn/screens/reminders_screen.dart';
 import 'package:mmwelconn/models/reminder_model.dart';
+import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final int initialTab;
+  const HomeScreen({super.key, this.initialTab = 0});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   final FirestoreService _fs = FirestoreService();
   StreamSubscription<List<ChatModel>>? _chatsSub;
   StreamSubscription<List<ReminderModel>>? _remindersSub;
+  StreamSubscription<List<ContactModel>>? _contactsSub;
+  StreamSubscription<List<ContactModel>>? _incomingRequestsSub;
   final Map<String, Timer> _reminderTimers = {};
   final Map<String, DateTime> _lastSeenMessageTimes = {};
+  bool _isReminderDialogShowing = false;
+  final List<ReminderModel> _reminderQueue = [];
 
   void _goToTab(int index) => setState(() => _selectedIndex = index);
 
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialTab;
     WidgetsBinding.instance.addObserver(this);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
@@ -59,9 +66,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             final chatId = chat.id;
             final lastTime = chat.lastMessageAt;
             if (lastTime != null) {
-              final prevTime = _lastSeenMessageTimes[chatId];
-              if (prevTime != null && lastTime.isAfter(prevTime)) {
-                if (chatId != ChatDetailScreen.activeChatId) {
+              if (!_lastSeenMessageTimes.containsKey(chatId)) {
+                _lastSeenMessageTimes[chatId] = lastTime;
+                if ((chat.unreadCount[uid] ?? 0) > 0 && chatId != ChatDetailScreen.activeChatId) {
                   final senderName = chat.participantNames[chat.lastSenderId] ?? 'Someone';
                   final messageText = (chat.lastMessage != null && chat.lastMessage!.isNotEmpty)
                       ? chat.lastMessage!
@@ -72,14 +79,69 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     type: NotifType.newMessage,
                   ));
                 }
+              } else {
+                final prevTime = _lastSeenMessageTimes[chatId];
+                if (prevTime != null && lastTime.isAfter(prevTime)) {
+                  if (chatId != ChatDetailScreen.activeChatId) {
+                    final senderName = chat.participantNames[chat.lastSenderId] ?? 'Someone';
+                    final messageText = (chat.lastMessage != null && chat.lastMessage!.isNotEmpty)
+                        ? chat.lastMessage!
+                        : 'Sent an image 📷';
+                    NotificationService().show(InAppNotification(
+                      title: senderName,
+                      body: messageText,
+                      type: NotifType.newMessage,
+                    ));
+                  }
+                }
+                _lastSeenMessageTimes[chatId] = lastTime;
               }
-              _lastSeenMessageTimes[chatId] = lastTime;
             }
           }
         }
       });
 
       _setupReminderScheduler(uid);
+
+      final Set<String> _existingAcceptedContactUids = {};
+      _contactsSub = _fs.watchContacts(uid, status: ContactStatus.accepted).listen((contacts) {
+        final currentUids = contacts.map((c) => c.contactUid).toSet();
+        if (_existingAcceptedContactUids.isEmpty) {
+          _existingAcceptedContactUids.addAll(currentUids);
+        } else {
+          for (var c in contacts) {
+            if (!_existingAcceptedContactUids.contains(c.contactUid)) {
+              NotificationService().show(InAppNotification(
+                title: 'Connection Accepted 🎉',
+                body: 'You are now connected with ${c.contactName}!',
+                type: NotifType.accepted,
+              ));
+              _existingAcceptedContactUids.add(c.contactUid);
+            }
+          }
+          _existingAcceptedContactUids.retainAll(currentUids);
+        }
+      });
+
+      final Set<String> _existingIncomingRequestUids = {};
+      _incomingRequestsSub = _fs.watchContacts(uid, status: ContactStatus.pending, direction: ContactDirection.incoming).listen((requests) {
+        final currentUids = requests.map((c) => c.contactUid).toSet();
+        if (_existingIncomingRequestUids.isEmpty) {
+          _existingIncomingRequestUids.addAll(currentUids);
+        } else {
+          for (var r in requests) {
+            if (!_existingIncomingRequestUids.contains(r.contactUid)) {
+              NotificationService().show(InAppNotification(
+                title: 'New Connection Request 👤',
+                body: '${r.contactName} sent you a connection request!',
+                type: NotifType.newRequest,
+              ));
+              _existingIncomingRequestUids.add(r.contactUid);
+            }
+          }
+          _existingIncomingRequestUids.retainAll(currentUids);
+        }
+      });
     }
   }
 
@@ -116,10 +178,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _fs.updateReminder(reminder.id, {'isCompleted': true});
         }
       }
+    }, onError: (e) {
+      debugPrint('Error watching upcoming reminders: $e');
     });
   }
 
   void _triggerFullScreenReminder(ReminderModel reminder) {
+    if (_isReminderDialogShowing) {
+      if (!_reminderQueue.any((r) => r.id == reminder.id)) {
+        _reminderQueue.add(reminder);
+      }
+      return;
+    }
+    _isReminderDialogShowing = true;
+
+    // Immediately mark as completed when alerting, so it won't fire again on load
+    _fs.updateReminder(reminder.id, {'isCompleted': true});
+
     showGeneralDialog(
       context: context,
       barrierDismissible: false,
@@ -193,7 +268,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         child: OutlinedButton(
                           onPressed: () {
                             final snoozeTime = DateTime.now().add(const Duration(minutes: 5));
-                            _fs.updateReminder(reminder.id, {'remindAt': snoozeTime});
+                            _fs.updateReminder(reminder.id, {'remindAt': snoozeTime, 'isCompleted': false});
                             Navigator.pop(context);
                           },
                           style: OutlinedButton.styleFrom(
@@ -229,7 +304,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
         );
       },
-    );
+    ).then((_) {
+      _isReminderDialogShowing = false;
+      if (_reminderQueue.isNotEmpty && mounted) {
+        final next = _reminderQueue.removeAt(0);
+        _triggerFullScreenReminder(next);
+      }
+    });
   }
 
   @override
@@ -237,6 +318,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     _chatsSub?.cancel();
     _remindersSub?.cancel();
+    _contactsSub?.cancel();
+    _incomingRequestsSub?.cancel();
     for (final t in _reminderTimers.values) {
       t.cancel();
     }
@@ -338,6 +421,8 @@ class _HomePageState extends State<_HomePage> {
     if (uid != null) {
       _userSub = _fs.watchUser(uid).listen((user) {
         if (mounted) setState(() => _userModel = user);
+      }, onError: (e) {
+        debugPrint('Error watching user profile: $e');
       });
     }
   }
@@ -397,6 +482,15 @@ class _HomePageState extends State<_HomePage> {
                               MaterialPageRoute(builder: (_) => const PhotosScreen()),
                             );
                           },
+                        ),
+                        const SizedBox(height: 48),
+                        Text(
+                          'Copyright of my app by MMWelconn by MRA',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.ink.withValues(alpha: 0.38),
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ],
                     ),

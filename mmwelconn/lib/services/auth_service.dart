@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
 import 'package:mmwelconn/services/notification_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 String _generateMmId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -13,6 +15,59 @@ String _generateMmId() {
 }
 
 class AuthService {
+  // Secure storage for Remember Me
+  static const _storage = FlutterSecureStorage();
+  static const _emailKey = 'email';
+  static const _passwordKey = 'password';
+
+  /// Save credentials when Remember Me is enabled.
+  static Future<void> saveCredentials({required String email, required String password}) async {
+    try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_emailKey, email);
+        await prefs.setString(_passwordKey, password);
+      } else {
+        await _storage.write(key: _emailKey, value: email);
+        await _storage.write(key: _passwordKey, value: password);
+      }
+    } catch (_) {}
+  }
+
+  /// Clear stored credentials.
+  static Future<void> clearCredentials() async {
+    try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_emailKey);
+        await prefs.remove(_passwordKey);
+      } else {
+        await _storage.delete(key: _emailKey);
+        await _storage.delete(key: _passwordKey);
+      }
+    } catch (_) {}
+  }
+
+  /// Retrieve stored credentials, returns null if not present.
+  static Future<Map<String, String>?> getStoredCredentials() async {
+    try {
+      if (kIsWeb) {
+        final prefs = await SharedPreferences.getInstance();
+        final email = prefs.getString(_emailKey);
+        final password = prefs.getString(_passwordKey);
+        if (email != null && password != null) {
+          return {'email': email, 'password': password};
+        }
+      } else {
+        final email = await _storage.read(key: _emailKey);
+        final password = await _storage.read(key: _passwordKey);
+        if (email != null && password != null) {
+          return {'email': email, 'password': password};
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -85,6 +140,7 @@ class AuthService {
     final uid = _auth.currentUser?.uid;
     if (uid != null) {
       try {
+        await _firestoreService.updateUser(uid, {'fcmToken': FieldValue.delete()});
         await _firestoreService.setUserStatus(uid, 'offline');
       } catch (_) {}
     }

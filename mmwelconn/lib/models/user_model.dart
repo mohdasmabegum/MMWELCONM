@@ -12,9 +12,12 @@ class UserModel {
   final bool notificationsEnabled;
   final bool autoUpdate;
   final bool showOnline;
+  final bool publicProfileVisible;
   final DateTime createdAt;
   final DateTime lastActive;
   final String? fcmToken;
+  final String chatLockPin;
+  final String chatLockPattern;
 
   const UserModel({
     required this.uid,
@@ -28,9 +31,12 @@ class UserModel {
     this.notificationsEnabled = true,
     this.autoUpdate = true,
     this.showOnline = true,
+    this.publicProfileVisible = true,
     required this.createdAt,
     required this.lastActive,
     this.fcmToken,
+    this.chatLockPin = '1234',
+    this.chatLockPattern = '',
   });
 
   factory UserModel.fromDoc(DocumentSnapshot doc) {
@@ -49,6 +55,7 @@ class UserModel {
       notificationsEnabled: d['notificationsEnabled'] ?? true,
       autoUpdate: d['autoUpdate'] ?? true,
       showOnline: d['showOnline'] ?? true,
+      publicProfileVisible: d['publicProfileVisible'] ?? true,
       createdAt: d['createdAt'] != null
           ? (d['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
@@ -56,6 +63,8 @@ class UserModel {
           ? (d['lastActive'] as Timestamp).toDate()
           : DateTime.now(),
       fcmToken: d['fcmToken'],
+      chatLockPin: d['chatLockPin'] ?? '1234',
+      chatLockPattern: d['chatLockPattern'] ?? '',
     );
   }
 
@@ -71,9 +80,12 @@ class UserModel {
         'notificationsEnabled': notificationsEnabled,
         'autoUpdate': autoUpdate,
         'showOnline': showOnline,
+        'publicProfileVisible': publicProfileVisible,
         'createdAt': Timestamp.fromDate(createdAt),
         'lastActive': Timestamp.fromDate(lastActive),
         'fcmToken': fcmToken,
+        'chatLockPin': chatLockPin,
+        'chatLockPattern': chatLockPattern,
       };
 
   String get profileImageUrl => profilePicture;

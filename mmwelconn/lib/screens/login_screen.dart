@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mmwelconn/screens/register_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
+import 'package:mmwelconn/services/notification_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,6 +22,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
   bool _loading = false;
+  bool _rememberMe = false;
+  final _storage = const FlutterSecureStorage();
 
   @override
   void initState() {
@@ -31,6 +36,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _slide = Tween<Offset>(begin: const Offset(0.04, 0.05), end: Offset.zero).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
     );
+    // Load stored credentials if any
+    _loadStoredCredentials();
+  }
+
+  Future<void> _loadStoredCredentials() async {
+    final creds = await AuthService.getStoredCredentials();
+    if (creds != null) {
+      setState(() {
+        _emailController.text = creds['email']!;
+        _passwordController.text = creds['password']!;
+        _rememberMe = true;
+      });
+    }
   }
 
   @override
@@ -58,14 +76,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (!mounted) return;
       setState(() => _loading = false);
       if (user != null) {
-        await showAuthSuccess(
-          context,
-          title: 'Welcome back!',
-          subtitle: 'You are now logged in.',
-          colors: const [Color(0xFF4E8DFF), Color(0xFF7B61FF)],
-        );
-        if (!mounted) return;
+        TextInput.finishAutofillContext();
+        if (_rememberMe) {
+          await AuthService.saveCredentials(email: _emailController.text.trim(), password: _passwordController.text);
+        } else {
+          await AuthService.clearCredentials();
+        }
         Navigator.of(context).pop();
+        NotificationService().show(InAppNotification(
+          title: 'Welcome back! 🎉',
+          body: 'You are now logged in.',
+          type: NotifType.welcome,
+        ));
       }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
@@ -133,21 +155,42 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                   ),
                             ),
                             const SizedBox(height: 26),
-                            AuthField(
-                              controller: _emailController,
-                              label: 'Email address',
-                              icon: Icons.email_rounded,
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                            ),
-                            const SizedBox(height: 16),
-                            AuthField(
-                              controller: _passwordController,
-                              label: 'Password',
-                              icon: Icons.lock_rounded,
-                              obscureText: true,
-                              textInputAction: TextInputAction.done,
-                              onSubmitted: (_) => _loading ? null : _login(),
+                            AutofillGroup(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AuthField(
+                                    controller: _emailController,
+                                    label: 'Email address',
+                                    icon: Icons.email_rounded,
+                                    keyboardType: TextInputType.emailAddress,
+                                    textInputAction: TextInputAction.next,
+                                    autofillHints: const [AutofillHints.username, AutofillHints.email],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AuthField(
+                                    controller: _passwordController,
+                                    label: 'Password',
+                                    icon: Icons.lock_rounded,
+                                    obscureText: true,
+                                    textInputAction: TextInputAction.done,
+                                    onSubmitted: (_) => _loading ? null : _login(),
+                                    autofillHints: const [AutofillHints.password],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    children: [
+                                      Checkbox(
+                                        value: _rememberMe,
+                                        onChanged: (bool? v) {
+                                          setState(() => _rememberMe = v ?? false);
+                                        },
+                                      ),
+                                      const Text('Save login info in the app for easy login'),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 22),
                             HoverActionButton(

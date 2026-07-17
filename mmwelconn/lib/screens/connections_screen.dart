@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mmwelconn/models/chat_model.dart';
 import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/screens/profile_screen.dart';
@@ -54,28 +55,8 @@ class _ConnectionsScreenState extends State<ConnectionsScreen>
     }
   }
 
-  Future<RelationshipType?> _showRelationDialog(String name) async {
-    return showDialog<RelationshipType>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Select relation for $name', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: RelationshipType.values.map((type) {
-              return ListTile(
-                leading: Icon(_getRelationIcon(type), color: _getRelationColor(type)),
-                title: Text(_pretty(type.name), style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.ink)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                onTap: () => Navigator.of(context).pop(type),
-              );
-            }).toList(),
-          ),
-        );
-      },
-    );
-  }
+  Future<RelationshipType?> _showRelationDialog(String name) =>
+      _showRelationDialogGlobal(context, name);
 
   Future<void> _addContact(UserModel user) async {
     final senderUid = FirebaseAuth.instance.currentUser!.uid;
@@ -208,6 +189,109 @@ class _SearchResults extends StatelessWidget {
 
   const _SearchResults({required this.results, required this.searching, required this.onAdd});
 
+  String _maskMmId(String mmId) {
+    if (mmId.isEmpty) return 'N/A';
+    if (mmId.length <= 3) return mmId;
+    final firstTwo = mmId.substring(0, 2);
+    final lastOne = mmId.substring(mmId.length - 1);
+    final maskedLength = mmId.length - 3;
+    return '$firstTwo${'*' * maskedLength}$lastOne';
+  }
+
+  void _showSearchProfileDetails(BuildContext context, UserModel u) {
+    final maskedId = _maskMmId(u.mmId);
+    final isPublic = u.publicProfileVisible;
+    final displayPhoto = isPublic ? u.profilePicture : "";
+    final displayName = isPublic ? u.name : "Private User";
+    final joinedDate = isPublic ? _formatDate(u.createdAt) : "Private";
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundImage: displayPhoto.isNotEmpty ? NetworkImage(displayPhoto) : null,
+                  backgroundColor: AppTheme.violet.withValues(alpha: 0.18),
+                  child: displayPhoto.isEmpty
+                      ? Text(displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                          style: const TextStyle(color: AppTheme.violet, fontSize: 32, fontWeight: FontWeight.bold))
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  displayName,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.ink),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text(
+                      'MM ID: ',
+                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+                    ),
+                    Text(
+                      maskedId,
+                      style: const TextStyle(color: AppTheme.violet, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_month_rounded, color: AppTheme.sky),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Joined On', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text(
+                            joinedDate,
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                if (!isPublic)
+                  Text(
+                    'This user profile is private.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                  ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.violet,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (searching) return const Center(child: CircularProgressIndicator());
@@ -222,10 +306,15 @@ class _SearchResults extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final u = results[i];
+        final displayName = u.publicProfileVisible ? u.name : "Private User";
+        final displayPhoto = u.publicProfileVisible ? u.profilePicture : "";
+        final maskedId = _maskMmId(u.mmId);
+
         return _ContactTile(
-          name: u.name,
-          photoUrl: u.profilePicture,
-          subtitle: u.email,
+          name: displayName,
+          photoUrl: displayPhoto,
+          subtitle: 'MM ID: $maskedId',
+          onTap: () => _showSearchProfileDetails(context, u),
           trailing: IconButton(
             icon: const Icon(Icons.person_add_rounded, color: AppTheme.violet),
             onPressed: () => onAdd(u),
@@ -363,23 +452,39 @@ class _ContactList extends StatelessWidget {
                   const SizedBox(height: 20),
                   const Divider(),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(_getRelationIcon(c.relationshipType), color: _getRelationColor(c.relationshipType)),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Relationship', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                            Text(
-                              _pretty(c.relationshipType.name),
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink),
-                            ),
-                          ],
+                  InkWell(
+                    onTap: () async {
+                      final newType = await _showRelationDialogGlobal(context, c.contactName);
+                      if (newType != null && newType != c.relationshipType) {
+                        await fs.updateContactRelationship(uid, c.contactUid, newType);
+                        await fs.updateContactRelationship(c.contactUid, uid, newType);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Relationship updated to ${_pretty(newType.name)}!')),
+                          );
+                          Navigator.pop(context); // Close sheet to refresh list
+                        }
+                      }
+                    },
+                    child: Row(
+                      children: [
+                        Icon(_getRelationIcon(c.relationshipType), color: _getRelationColor(c.relationshipType)),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Relationship (Tap to Edit)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text(
+                                _pretty(c.relationshipType.name),
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        const Icon(Icons.edit_rounded, size: 16, color: AppTheme.violet),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -427,20 +532,38 @@ class _ContactList extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () async {
-                            Navigator.of(context).pop();
-                            final chatId = await fs.getOrCreateDirectChat(currentUid, c.contactUid);
-                            final chat = await fs.getChat(chatId);
-                            if (chat != null && context.mounted) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => ChatDetailScreen(
-                                    chat: chat,
-                                    currentUid: currentUid,
-                                  ),
+                          onPressed: () {
+                            final nav = Navigator.of(context);
+                            nav.pop(); // Pop the bottom sheet
+                            
+                            // Construct shell chat instantly in memory
+                            final ids = [currentUid, c.contactUid]..sort();
+                            final chatId = ids.join('_');
+                            final chatShell = ChatModel(
+                              id: chatId,
+                              chatType: ChatType.direct,
+                              participantIds: [currentUid, c.contactUid],
+                              participantNames: {
+                                currentUid: 'Me',
+                                c.contactUid: c.contactName,
+                              },
+                              participantProfileImageUrls: {
+                                currentUid: '',
+                                c.contactUid: c.contactPhotoUrl,
+                              },
+                            );
+
+                            nav.push(
+                              MaterialPageRoute(
+                                builder: (_) => ChatDetailScreen(
+                                  chat: chatShell,
+                                  currentUid: currentUid,
                                 ),
-                              );
-                            }
+                              ),
+                            );
+
+                            // Background create direct chat in Firestore
+                            fs.getOrCreateDirectChat(currentUid, c.contactUid);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.violet,
@@ -461,6 +584,34 @@ class _ContactList extends StatelessWidget {
         );
       },
     );
+  }
+
+  Color _getRelationBgColor(RelationshipType? type) {
+    if (type == null) return Colors.white.withValues(alpha: 0.72);
+    switch (type) {
+      case RelationshipType.family:
+        return const Color(0xFFECFDF5); // Soft emerald/mint
+      case RelationshipType.partner:
+        return const Color(0xFFFFF0F3); // Soft rose
+      case RelationshipType.friend:
+        return const Color(0xFFF5F3FF); // Soft lavender
+      case RelationshipType.other:
+        return const Color(0xFFF1F5F9); // Soft slate
+    }
+  }
+
+  Color _getRelationBorderColor(RelationshipType? type) {
+    if (type == null) return Colors.transparent;
+    switch (type) {
+      case RelationshipType.family:
+        return const Color(0xFFA7F3D0); // Soft green border
+      case RelationshipType.partner:
+        return const Color(0xFFFFE4E6);
+      case RelationshipType.friend:
+        return const Color(0xFFDDD6FE);
+      case RelationshipType.other:
+        return const Color(0xFFE2E8F0);
+    }
   }
 
   @override
@@ -524,6 +675,7 @@ class _ContactList extends StatelessWidget {
                         name: c.contactName,
                         photoUrl: c.contactPhotoUrl,
                         subtitle: '',
+                        relationshipType: c.relationshipType,
                         onTap: () => _showConnectionDetailsSheet(context, c, uid),
                       ),
                     );
@@ -565,6 +717,7 @@ class _ContactList extends StatelessWidget {
               name: c.contactName,
               photoUrl: c.contactPhotoUrl,
               subtitle: subtitle,
+              relationshipType: c.relationshipType,
               relation: _pretty(c.relationshipType.name),
               detail: 'Connected on ${_formatDate(c.addedAt)}',
               status: status == ContactStatus.accepted ? 'Connection' : subtitle,
@@ -590,13 +743,52 @@ class _ContactTile extends StatelessWidget {
   final String name;
   final String photoUrl;
   final String subtitle;
+  final RelationshipType? relationshipType;
   final String? relation;
   final String? detail;
   final String? status;
   final VoidCallback? onTap;
   final Widget? trailing;
 
-  const _ContactTile({required this.name, required this.photoUrl, required this.subtitle, this.relation, this.detail, this.status, this.onTap, this.trailing});
+  const _ContactTile({
+    required this.name,
+    required this.photoUrl,
+    required this.subtitle,
+    this.relationshipType,
+    this.relation,
+    this.detail,
+    this.status,
+    this.onTap,
+    this.trailing,
+  });
+
+  Color _getRelationBgColor(RelationshipType? type) {
+    if (type == null) return Colors.white.withValues(alpha: 0.72);
+    switch (type) {
+      case RelationshipType.family:
+        return const Color(0xFFECFDF5); // Soft emerald/mint
+      case RelationshipType.partner:
+        return const Color(0xFFFFF0F3);
+      case RelationshipType.friend:
+        return const Color(0xFFF5F3FF);
+      case RelationshipType.other:
+        return const Color(0xFFF1F5F9);
+    }
+  }
+
+  Color _getRelationBorderColor(RelationshipType? type) {
+    if (type == null) return Colors.transparent;
+    switch (type) {
+      case RelationshipType.family:
+        return const Color(0xFFA7F3D0); // Soft green border
+      case RelationshipType.partner:
+        return const Color(0xFFFFE4E6);
+      case RelationshipType.friend:
+        return const Color(0xFFDDD6FE);
+      case RelationshipType.other:
+        return const Color(0xFFE2E8F0);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -606,8 +798,12 @@ class _ContactTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.72),
+            color: _getRelationBgColor(relationshipType),
             borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: _getRelationBorderColor(relationshipType),
+              width: 1,
+            ),
           ),
           child: Row(
             children: [
@@ -664,7 +860,7 @@ IconData _getRelationIcon(RelationshipType type) {
 Color _getRelationColor(RelationshipType type) {
   switch (type) {
     case RelationshipType.family:
-      return Colors.orange;
+      return const Color(0xFF059669); // Dark emerald green for contrast
     case RelationshipType.partner:
       return Colors.pink;
     case RelationshipType.friend:
@@ -672,4 +868,27 @@ Color _getRelationColor(RelationshipType type) {
     case RelationshipType.other:
       return Colors.blueGrey;
   }
+}
+
+Future<RelationshipType?> _showRelationDialogGlobal(BuildContext context, String name) async {
+  return showDialog<RelationshipType>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Select relation for $name', style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: RelationshipType.values.map((type) {
+            return ListTile(
+              leading: Icon(_getRelationIcon(type), color: _getRelationColor(type)),
+              title: Text(_pretty(type.name), style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.ink)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              onTap: () => Navigator.of(context).pop(type),
+            );
+          }).toList(),
+        ),
+      );
+    },
+  );
 }

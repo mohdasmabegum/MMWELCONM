@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mmwelconn/screens/login_screen.dart';
 import 'package:mmwelconn/services/auth_service.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
@@ -60,6 +61,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       );
     } else {
       // Sign out so AuthGate doesn't auto-redirect to home
+      TextInput.finishAutofillContext();
       await _authService.logout();
       if (!mounted) return;
       await showAccountCreatedDialog(
@@ -116,24 +118,34 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                                   ),
                             ),
                             const SizedBox(height: 26),
-                            AuthField(
-                              controller: _nameController,
-                              label: 'Full name',
-                              icon: Icons.person_rounded,
-                            ),
-                            const SizedBox(height: 16),
-                            AuthField(
-                              controller: _emailController,
-                              label: 'Email address',
-                              icon: Icons.email_rounded,
-                              keyboardType: TextInputType.emailAddress,
-                            ),
-                            const SizedBox(height: 16),
-                            AuthField(
-                              controller: _passwordController,
-                              label: 'Password',
-                              icon: Icons.lock_rounded,
-                              obscureText: true,
+                            AutofillGroup(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AuthField(
+                                    controller: _nameController,
+                                    label: 'Full name',
+                                    icon: Icons.person_rounded,
+                                    autofillHints: const [AutofillHints.name],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AuthField(
+                                    controller: _emailController,
+                                    label: 'Email address',
+                                    icon: Icons.email_rounded,
+                                    keyboardType: TextInputType.emailAddress,
+                                    autofillHints: const [AutofillHints.username, AutofillHints.email],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  AuthField(
+                                    controller: _passwordController,
+                                    label: 'Password',
+                                    icon: Icons.lock_rounded,
+                                    obscureText: true,
+                                    autofillHints: const [AutofillHints.newPassword],
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 22),
                             HoverActionButton(

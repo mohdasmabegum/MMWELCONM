@@ -338,7 +338,7 @@ class AddReminderSheet extends StatefulWidget {
 }
 
 class _AddReminderSheetState extends State<AddReminderSheet> {
-  final _titleCtrl = TextEditingController();
+  late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
   DateTime _selectedDate = DateTime.now();
   TimeOfDay _selectedTime = TimeOfDay.now();
@@ -347,6 +347,9 @@ class _AddReminderSheetState extends State<AddReminderSheet> {
   @override
   void initState() {
     super.initState();
+    _titleCtrl = TextEditingController(
+      text: widget.prefilledDescription != null ? 'Follow up: Chat' : '',
+    );
     _descCtrl = TextEditingController(text: widget.prefilledDescription ?? '');
   }
 

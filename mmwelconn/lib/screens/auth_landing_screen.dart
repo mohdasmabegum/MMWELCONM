@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AuthLandingScreen extends StatefulWidget {
   final VoidCallback onLoginTap;
@@ -152,6 +153,18 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> with SingleTicker
                               colors: const [Color(0xFFFF6F91), Color(0xFFFF8A65)],
                               outlined: true,
                               onPressed: widget.onRegisterTap,
+                            ),
+                            const SizedBox(height: 14),
+                            HoverActionButton(
+                              label: 'Download Android App',
+                              icon: Icons.android_rounded,
+                              colors: const [Color(0xFF00C853), Color(0xFF64DD17)],
+                              onPressed: () async {
+                                final url = Uri.parse('https://mm-welconn.web.app/app-release.apk');
+                                if (await canLaunchUrl(url)) {
+                                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                                }
+                              },
                             ),
                           ],
                         ),

@@ -43,6 +43,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       builder: (context, child) => NotificationOverlay(child: child!),
       routes: {
+        '/': (_) => const SplashFlow(),
         '/login': (_) => const LoginScreen(),
         '/register': (_) => const RegisterScreen(),
       },
@@ -99,10 +100,18 @@ class _AuthGateState extends State<AuthGate> {
       if (loggedIn && !_isLoggedIn) {
         // Delay navigation so any popup on the stack can finish first
         Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) setState(() => _isLoggedIn = true);
+          if (mounted) {
+            setState(() {
+              _isLoggedIn = true;
+              _ready = true;
+            });
+          }
         });
       } else if (!loggedIn && _isLoggedIn) {
-        setState(() => _isLoggedIn = false);
+        setState(() {
+          _isLoggedIn = false;
+          _ready = true;
+        });
       } else if (!_ready) {
         setState(() {
           _isLoggedIn = loggedIn;

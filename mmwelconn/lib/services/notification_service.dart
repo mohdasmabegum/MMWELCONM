@@ -175,6 +175,7 @@ class _NotifBannerState extends State<_NotifBanner>
   late final AnimationController _ctrl;
   late final Animation<Offset> _slide;
   late final Animation<double> _fade;
+  bool _isHovered = false;
 
   @override
   void initState() {
@@ -214,62 +215,83 @@ class _NotifBannerState extends State<_NotifBanner>
         opacity: _fade,
         child: SlideTransition(
           position: _slide,
-          child: GestureDetector(
-            onTap: () {
-              widget.entry.notif.onTap?.call();
-              _dismiss();
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: color.withValues(alpha: 0.25)),
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.18),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutQuad,
+              transform: Matrix4.identity()
+                ..translate(0.0, _isHovered ? -4.0 : 0.0)
+                ..scale(_isHovered ? 1.015 : 1.0),
+              child: Material(
+                type: MaterialType.transparency,
+                child: GestureDetector(
+                  onTap: () {
+                    widget.entry.notif.onTap?.call();
+                    _dismiss();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
                     decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: _isHovered ? color.withValues(alpha: 0.7) : color.withValues(alpha: 0.35),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withValues(alpha: _isHovered ? 0.22 : 0.12),
+                          blurRadius: _isHovered ? 24 : 16,
+                          offset: Offset(0, _isHovered ? 10 : 6),
+                        ),
+                      ],
                     ),
-                    child: Icon(icon, color: color, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(widget.entry.notif.title,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13,
-                                color: AppTheme.ink)),
-                        const SizedBox(height: 2),
-                        Text(widget.entry.notif.body,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: AppTheme.ink.withValues(alpha: 0.55))),
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(icon, color: color, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(widget.entry.notif.title,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
+                                      decoration: TextDecoration.none,
+                                      color: AppTheme.ink)),
+                              const SizedBox(height: 3),
+                              Text(widget.entry.notif.body,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      decoration: TextDecoration.none,
+                                      fontWeight: FontWeight.normal,
+                                      color: AppTheme.ink.withValues(alpha: 0.55))),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _dismiss,
+                          child: Icon(Icons.close_rounded,
+                              size: 18, color: AppTheme.ink.withValues(alpha: 0.35)),
+                        ),
                       ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: _dismiss,
-                    child: Icon(Icons.close_rounded,
-                        size: 16, color: AppTheme.ink.withValues(alpha: 0.3)),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

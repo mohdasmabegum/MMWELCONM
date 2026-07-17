@@ -9,11 +9,18 @@ class ChatModel {
   final Map<String, String> participantNames;
   final Map<String, String> participantProfileImageUrls;
   final String? groupName;
+  final String? groupDescription;
+  final DateTime? groupCreatedAt;
+  final String? groupCategory;
+  final String? groupCreatedBy;
   final String? lastMessage;
   final String? lastSenderId;
   final DateTime? lastMessageAt;
   final Map<String, int> unreadCount;
   final Map<String, bool> discloseOnlineStatus;
+  final Map<String, bool> lockedBy;
+  final Map<String, bool> typingStatus;
+  final Map<String, bool> hiddenBy;
 
   const ChatModel({
     required this.id,
@@ -22,11 +29,18 @@ class ChatModel {
     required this.participantNames,
     required this.participantProfileImageUrls,
     this.groupName,
+    this.groupDescription,
+    this.groupCreatedAt,
+    this.groupCategory,
+    this.groupCreatedBy,
     this.lastMessage,
     this.lastSenderId,
     this.lastMessageAt,
     this.unreadCount = const {},
     this.discloseOnlineStatus = const {},
+    this.lockedBy = const {},
+    this.typingStatus = const {},
+    this.hiddenBy = const {},
   });
 
   factory ChatModel.fromDoc(DocumentSnapshot doc) {
@@ -40,6 +54,12 @@ class ChatModel {
       participantNames: Map<String, String>.from(d['participantNames'] ?? {}),
       participantProfileImageUrls: Map<String, String>.from(d['participantProfileImageUrls'] ?? {}),
       groupName: d['groupName'],
+      groupDescription: d['groupDescription'],
+      groupCreatedAt: d['groupCreatedAt'] != null
+          ? (d['groupCreatedAt'] as Timestamp).toDate()
+          : null,
+      groupCategory: d['groupCategory'],
+      groupCreatedBy: d['groupCreatedBy'],
       lastMessage: d['lastMessage'],
       lastSenderId: d['lastSenderId'],
       lastMessageAt: d['lastMessageAt'] != null
@@ -47,6 +67,9 @@ class ChatModel {
           : null,
       unreadCount: Map<String, int>.from(d['unreadCount'] ?? {}),
       discloseOnlineStatus: Map<String, bool>.from(d['discloseOnlineStatus'] ?? {}),
+      lockedBy: Map<String, bool>.from(d['lockedBy'] ?? {}),
+      typingStatus: Map<String, bool>.from(d['typingStatus'] ?? {}),
+      hiddenBy: Map<String, bool>.from(d['hiddenBy'] ?? {}),
     );
   }
 
@@ -56,12 +79,20 @@ class ChatModel {
         'participantNames': participantNames,
         'participantProfileImageUrls': participantProfileImageUrls,
         'groupName': groupName,
+        'groupDescription': groupDescription,
+        'groupCreatedAt':
+            groupCreatedAt != null ? Timestamp.fromDate(groupCreatedAt!) : null,
+        'groupCategory': groupCategory,
+        'groupCreatedBy': groupCreatedBy,
         'lastMessage': lastMessage,
         'lastSenderId': lastSenderId,
         'lastMessageAt':
             lastMessageAt != null ? Timestamp.fromDate(lastMessageAt!) : null,
         'unreadCount': unreadCount,
         'discloseOnlineStatus': discloseOnlineStatus,
+        'lockedBy': lockedBy,
+        'typingStatus': typingStatus,
+        'hiddenBy': hiddenBy,
       };
 }
 

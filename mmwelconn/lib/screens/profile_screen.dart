@@ -9,6 +9,7 @@ import 'package:mmwelconn/models/contact_model.dart';
 import 'package:mmwelconn/models/user_model.dart';
 import 'package:mmwelconn/services/cloudinary_service.dart';
 import 'package:mmwelconn/services/firestore_service.dart';
+import 'package:mmwelconn/screens/chat_detail_screen.dart';
 import 'package:mmwelconn/widgets/app_brand.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -69,6 +70,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } finally {
       if (mounted) setState(() => _editingStatus = false);
     }
+  }
+
+  void _editUsername(BuildContext context, String currentName) {
+    final ctrl = TextEditingController(text: currentName);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Name', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.ink)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(
+            hintText: 'Enter your name...',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final newName = ctrl.text.trim();
+              if (newName.isNotEmpty) {
+                await _fs.updateUser(widget.userId, {'name': newName});
+                if (mounted) Navigator.pop(context);
+              }
+            },
+            child: const Text('Save', style: TextStyle(color: AppTheme.violet, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -165,13 +200,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Text(
-                            user.name,
-                            textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.ink,
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                user.name,
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.ink,
+                                    ),
+                              ),
+                              if (_isMe && widget.editable) ...[
+                                const SizedBox(width: 8),
+                                GestureDetector(
+                                  onTap: () => _editUsername(context, user.name),
+                                  child: const Icon(Icons.edit_rounded, size: 18, color: AppTheme.violet),
                                 ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -302,6 +348,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   if (contact != null) ...[
                     const SizedBox(height: 16),
+                    if (!_isMe) ...[
+                      HoverCard(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            final chatId = await _fs.getOrCreateDirectChat(widget.viewerUid, widget.userId);
+                            final chat = await _fs.getChat(chatId);
+                            if (chat != null && mounted) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => ChatDetailScreen(
+                                    chat: chat,
+                                    currentUid: widget.viewerUid,
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                          icon: const Icon(Icons.message_rounded, color: Colors.white),
+                          label: const Text('Send Message', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.violet,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 52),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     HoverCard(
                       child: Container(
                         padding: const EdgeInsets.all(18),

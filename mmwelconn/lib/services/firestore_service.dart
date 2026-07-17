@@ -42,6 +42,7 @@ class FirestoreService {
       .collection('users')
       .doc(uid)
       .snapshots()
+      .handleError((_) {})
       .map((d) => d.exists ? UserModel.fromDoc(d) : null);
 
   Future<List<UserModel>> searchUsers(String query) async {
@@ -196,7 +197,7 @@ class FirestoreService {
     Query q = _db.collection('users').doc(uid).collection('contacts');
     if (status != null) q = q.where('status', isEqualTo: status.name);
     if (direction != null) q = q.where('direction', isEqualTo: direction.name);
-    return q.snapshots().map((s) {
+    return q.snapshots().handleError((_) {}).map((s) {
       final list = s.docs.map(ContactModel.fromDoc).toList();
       list.sort((a, b) => b.addedAt.compareTo(a.addedAt));
       return list;
@@ -212,6 +213,15 @@ class FirestoreService {
         .get();
     return doc.exists ? ContactModel.fromDoc(doc) : null;
   }
+
+  Stream<ContactModel?> watchContact(String ownerUid, String contactUid) => _db
+      .collection('users')
+      .doc(ownerUid)
+      .collection('contacts')
+      .doc(contactUid)
+      .snapshots()
+      .handleError((_) {})
+      .map((d) => d.exists ? ContactModel.fromDoc(d) : null);
 
   // ── Chats ─────────────────────────────────────────────────────────────────
 
@@ -331,6 +341,7 @@ class FirestoreService {
           .orderBy('createdAt', descending: true)
           .limit(limit)
           .snapshots()
+          .handleError((_) {})
           .map((s) => s.docs.map(MessageModel.fromDoc).toList());
 
   // ── Moods ─────────────────────────────────────────────────────────────────
@@ -351,6 +362,7 @@ class FirestoreService {
       .collection('moods')
       .doc(moodId)
       .snapshots()
+      .handleError((_) {})
       .map((d) => d.exists ? MoodModel.fromDoc(d) : null);
 
   Future<void> deleteMood(String moodId) =>
@@ -371,6 +383,7 @@ class FirestoreService {
       .orderBy('createdAt', descending: true)
       .limit(limit)
       .snapshots()
+      .handleError((_) {})
       .map((s) => s.docs.map(MoodModel.fromDoc).toList());
 
   Stream<List<MoodModel>> watchUserMoods(String userId, {int limit = 20}) =>
@@ -380,6 +393,7 @@ class FirestoreService {
           .orderBy('createdAt', descending: true)
           .limit(limit)
           .snapshots()
+          .handleError((_) {})
           .map((s) => s.docs.map(MoodModel.fromDoc).toList());
 
   /// Streams only mood posts that have a photo attached, for the mood widget section.
@@ -390,6 +404,7 @@ class FirestoreService {
           .orderBy('createdAt', descending: true)
           .limit(limit)
           .snapshots()
+          .handleError((_) {})
           .map((s) => s.docs
               .map(MoodModel.fromDoc)
               .where((m) => m.moodPhotoUrl != null && m.moodPhotoUrl!.isNotEmpty)
@@ -401,6 +416,7 @@ class FirestoreService {
       .collection('app_config')
       .doc('version')
       .snapshots()
+      .handleError((_) {})
       .map((d) => d.exists ? (d.data() as Map<String, dynamic>) : {});
 
   Future<void> updateAutoUpdate(String uid, bool enabled) =>
@@ -524,6 +540,7 @@ class FirestoreService {
       .collection('reminders')
       .where('userId', isEqualTo: uid)
       .snapshots()
+      .handleError((_) {})
       .map((s) {
         final list = s.docs.map(ReminderModel.fromDoc).toList();
         list.sort((a, b) {
@@ -540,6 +557,7 @@ class FirestoreService {
       .where('userId', isEqualTo: uid)
       .where('isCompleted', isEqualTo: false)
       .snapshots()
+      .handleError((_) {})
       .map((s) {
         final list = s.docs.map(ReminderModel.fromDoc).toList();
         list.sort((a, b) => a.remindAt.compareTo(b.remindAt));
@@ -550,10 +568,82 @@ class FirestoreService {
       .collection('chats')
       .doc(chatId)
       .snapshots()
+      .handleError((_) {})
       .map((doc) => doc.exists ? ChatModel.fromDoc(doc) : null);
 
   Future<void> updateOnlineDisclosure(String chatId, String uid, bool disclose) =>
       _db.collection('chats').doc(chatId).update({
         'discloseOnlineStatus.$uid': disclose,
       });
+
+  Future<void> toggleChatLock(String chatId, String uid, bool isLocked) =>
+      _db.collection('chats').doc(chatId).update({
+        'lockedBy.$uid': isLocked,
+      });
+
+  Future<void> setTypingStatus(String chatId, String uid, bool isTyping) =>
+      _db.collection('chats').doc(chatId).update({
+        'typingStatus.$uid': isTyping,
+      });
+
+  Future<String> createGroupChat({
+    required String creatorUid,
+    required String groupName,
+    required List<String> participantIds,
+    String groupDescription = '',
+    String groupCategory = 'Friends',
+  }) async {
+    final docRef = _db.collection('chats').doc();
+    final myUser = await getUser(creatorUid);
+
+    final Map<String, String> names = {
+      creatorUid: myUser?.name ?? '',
+    };
+    final Map<String, String> photos = {
+      creatorUid: myUser?.profilePicture ?? '',
+    };
+
+    for (final uid in participantIds) {
+      final u = await getUser(uid);
+      names[uid] = u?.name ?? '';
+      photos[uid] = u?.profilePicture ?? '';
+    }
+
+    final allIds = [creatorUid, ...participantIds];
+
+    await docRef.set({
+      'chatType': ChatType.group.name,
+      'participantIds': allIds,
+      'participantNames': names,
+      'participantProfileImageUrls': photos,
+      'groupName': groupName,
+      'groupDescription': groupDescription,
+      'groupCreatedAt': FieldValue.serverTimestamp(),
+      'groupCategory': groupCategory,
+      'groupCreatedBy': creatorUid,
+      'unreadCount': {for (final uid in allIds) uid: 0},
+      'discloseOnlineStatus': {for (final uid in allIds) uid: true},
+      'lockedBy': {for (final uid in allIds) uid: false},
+      'typingStatus': {for (final uid in allIds) uid: false},
+    });
+    return docRef.id;
+  }
+
+  Future<void> updateGroupDetails(
+    String chatId, {
+    String? name,
+    String? description,
+    String? category,
+  }) async {
+    final Map<String, dynamic> updates = {};
+    if (name != null) updates['groupName'] = name;
+    if (description != null) updates['groupDescription'] = description;
+    if (category != null) updates['groupCategory'] = category;
+    if (updates.isNotEmpty) {
+      await _db.collection('chats').doc(chatId).update(updates);
+    }
+  }
+
+  Future<void> toggleChatHide(String chatId, String uid, bool hide) =>
+      _db.collection('chats').doc(chatId).update({'hiddenBy.$uid': hide});
 }
