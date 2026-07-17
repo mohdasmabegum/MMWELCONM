@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'package:mmwelconm/services/firestore_service.dart';
 import 'package:mmwelconm/widgets/app_brand.dart';
 
@@ -31,11 +34,32 @@ class NotificationService {
 
   Stream<InAppNotification> get stream => _controller.stream;
 
+  final FlutterLocalNotificationsPlugin _localNotifs = FlutterLocalNotificationsPlugin();
+
   void show(InAppNotification notification) {
     _controller.add(notification);
   }
 
   Future<void> init() async {
+    // Initialize timezones
+    tz.initializeTimeZones();
+
+    // Initialize local notifications
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings();
+    const InitializationSettings initSettings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+    );
+
+    await _localNotifs.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        debugPrint('Local notification tapped: ${response.payload}');
+      },
+    );
+
     // Listen to foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       final notification = message.notification;
@@ -45,6 +69,12 @@ class NotificationService {
           body: notification.body ?? '',
           type: NotifType.newMessage,
         ));
+
+        showLocalNotification(
+          notification.title ?? 'New Message',
+          notification.body ?? '',
+          payload: message.data['chatId'],
+        );
       }
     });
 
@@ -63,6 +93,66 @@ class NotificationService {
     });
   }
 
+  Future<void> showLocalNotification(String title, String body, {String? payload}) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'mm_welconm_messages',
+      'MMWelconm Messages',
+      channelDescription: 'Real-time message notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+      sound: RawResourceAndroidNotificationSound('default'),
+    );
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails();
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _localNotifs.show(
+      DateTime.now().millisecond,
+      title,
+      body,
+      platformDetails,
+      payload: payload,
+    );
+  }
+
+  Future<void> scheduleLocalNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+    String? payload,
+  }) async {
+    tz.initializeTimeZones();
+    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
+
+    await _localNotifs.zonedSchedule(
+      id,
+      title,
+      body,
+      tzScheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'mm_welconm_reminders',
+          'MMWelconm Reminders',
+          channelDescription: 'Scheduled reminders and alarms',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
+    );
+  }
+
+  Future<void> cancelScheduledNotification(int id) async {
+    await _localNotifs.cancel(id);
+  }
+
   Future<void> requestPermissionAndSaveToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -78,6 +168,12 @@ class NotificationService {
         provisional: false,
         sound: true,
       );
+
+      // Request local notification permission on Android 13+
+      await _localNotifs
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {

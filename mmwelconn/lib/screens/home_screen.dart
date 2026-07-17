@@ -172,12 +172,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _remindersSub = _fs.watchUpcomingReminders(uid).listen((reminders) {
       final now = DateTime.now();
 
-      // Cancel timers for reminders no longer in upcoming list
+      // Cancel timers and system notifications for reminders no longer in upcoming list
       final currentIds = reminders.map((r) => r.id).toSet();
       _reminderTimers.keys.toList().forEach((id) {
         if (!currentIds.contains(id)) {
           _reminderTimers[id]?.cancel();
           _reminderTimers.remove(id);
+          NotificationService().cancelScheduledNotification(id.hashCode);
         }
       });
 
@@ -192,6 +193,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _reminderTimers.remove(reminder.id);
           });
           _reminderTimers[reminder.id] = timer;
+
+          // Sync with local background system notification tray scheduler
+          NotificationService().scheduleLocalNotification(
+            id: reminder.id.hashCode,
+            title: 'Schedule Alert: ${reminder.title}',
+            body: reminder.description.isNotEmpty ? reminder.description : 'Reminder is active.',
+            scheduledDate: reminder.remindAt,
+          );
         } else {
           // Missed/immediate: trigger within last 1 hour
           if (now.difference(reminder.remindAt).inHours < 1) {
@@ -379,12 +388,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ];
 
     return Scaffold(
-      body: pages[_selectedIndex],
-      bottomNavigationBar: _buildBottomNav(),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 88),
+              child: pages[_selectedIndex],
+            ),
+          ),
+          Positioned(
+            left: 12,
+            top: MediaQuery.of(context).size.height * 0.1,
+            bottom: MediaQuery.of(context).size.height * 0.1,
+            child: _buildSideNav(),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildBottomNav() {
+  Widget _buildSideNav() {
     final tabs = [
       {'icon': Icons.home_rounded, 'label': 'Home'},
       {'icon': Icons.chat_rounded, 'label': 'Chats'},
@@ -395,81 +418,79 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ];
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-      height: 68,
+      width: 68,
+      padding: const EdgeInsets.symmetric(vertical: 20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
-        color: const Color(0xFF1E1E2E).withValues(alpha: 0.85),
+        color: const Color(0xFF1E1E2E).withValues(alpha: 0.88),
         border: Border.all(
           color: const Color(0xFFC084FC).withValues(alpha: 0.25),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.15),
-            blurRadius: 20,
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.18),
+            blurRadius: 24,
             spreadRadius: 2,
-            offset: const Offset(0, 8),
+            offset: const Offset(4, 0),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(tabs.length, (idx) {
-            final isSelected = _selectedIndex == idx;
-            final item = tabs[idx];
-            return Expanded(
-              child: GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _goToTab(idx);
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutBack,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isSelected ? 12 : 8,
-                        vertical: isSelected ? 6 : 4,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: isSelected
-                            ? const Color(0xFF7C3AED).withValues(alpha: 0.2)
-                            : Colors.transparent,
-                      ),
-                      child: Icon(
-                        item['icon'] as IconData,
-                        color: isSelected
-                            ? const Color(0xFFC084FC)
-                            : Colors.white.withValues(alpha: 0.45),
-                        size: isSelected ? 24 : 21,
-                      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(tabs.length, (idx) {
+          final isSelected = _selectedIndex == idx;
+          final item = tabs[idx];
+          return GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _goToTab(idx);
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutBack,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSelected ? 12 : 8,
+                      vertical: isSelected ? 12 : 8,
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item['label'] as String,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
-                        color: isSelected
-                            ? const Color(0xFFC084FC)
-                            : Colors.white.withValues(alpha: 0.4),
-                        letterSpacing: 0.5,
-                      ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: isSelected
+                          ? const Color(0xFF7C3AED).withValues(alpha: 0.2)
+                          : Colors.transparent,
                     ),
-                  ],
-                ),
+                    child: Icon(
+                      item['icon'] as IconData,
+                      color: isSelected
+                          ? const Color(0xFFC084FC)
+                          : Colors.white.withValues(alpha: 0.45),
+                      size: isSelected ? 24 : 21,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item['label'] as String,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
+                      color: isSelected
+                          ? const Color(0xFFC084FC)
+                          : Colors.white.withValues(alpha: 0.4),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
               ),
-            );
-          }),
-        ),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -562,12 +583,15 @@ class _HomePageState extends State<_HomePage> {
                           },
                         ),
                         const SizedBox(height: 48),
-                        Text(
-                          'Copyright of my app by mmwelconm by MRA',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppTheme.ink.withValues(alpha: 0.38),
-                            fontWeight: FontWeight.w500,
+                        Center(
+                          child: Text(
+                            '© ${DateTime.now().year} MMWelconm by MRA',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.ink.withValues(alpha: 0.38),
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                            ),
                           ),
                         ),
                       ],

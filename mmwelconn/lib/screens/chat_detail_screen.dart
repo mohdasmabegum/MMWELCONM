@@ -1719,6 +1719,7 @@ class _InputBar extends StatelessWidget {
           ),
           Expanded(
             child: TextField(
+              autofocus: true,
               controller: controller,
               onSubmitted: (_) => onSend(),
               onChanged: onChanged,
