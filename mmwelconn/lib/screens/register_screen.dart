@@ -21,6 +21,33 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
   late final Animation<Offset> _slide;
   bool _loading = false;
   String _selectedAgeGroup = 'adult';
+  DateTime? _selectedDob;
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return 'Select Date of Birth';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  void _onDobSelected(DateTime date) {
+    setState(() {
+      _selectedDob = date;
+      final now = DateTime.now();
+      int age = now.year - date.year;
+      if (now.month < date.month || (now.month == date.month && now.day < date.day)) {
+        age--;
+      }
+      
+      if (age < 13) {
+        _selectedAgeGroup = 'kid';
+      } else if (age < 20) {
+        _selectedAgeGroup = 'teen';
+      } else if (age < 55) {
+        _selectedAgeGroup = 'adult';
+      } else {
+        _selectedAgeGroup = 'elder';
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -48,12 +75,20 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       return;
     }
 
+    if (_selectedDob == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select your Date of Birth')),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     final user = await _authService.signUp(
       _emailController.text.trim(),
       _passwordController.text,
       _nameController.text.trim(),
       ageGroup: _selectedAgeGroup,
+      dateOfBirth: _selectedDob,
     );
     if (!mounted) return;
     setState(() => _loading = false);
@@ -236,6 +271,54 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                                     icon: Icons.lock_rounded,
                                     obscureText: true,
                                     autofillHints: const [AutofillHints.newPassword],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  GestureDetector(
+                                    onTap: () async {
+                                      final now = DateTime.now();
+                                      final selected = await showDatePicker(
+                                        context: context,
+                                        initialDate: _selectedDob ?? DateTime(now.year - 18, now.month, now.day),
+                                        firstDate: DateTime(now.year - 120),
+                                        lastDate: now,
+                                      );
+                                      if (selected != null) {
+                                        _onDobSelected(selected);
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.03),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          )
+                                        ],
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.cake_rounded, color: AppTheme.violet),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              _selectedDob == null
+                                                  ? 'Date of Birth'
+                                                  : 'Birthday: ${_formatDate(_selectedDob)}',
+                                              style: TextStyle(
+                                                color: _selectedDob == null ? Colors.black38 : AppTheme.ink,
+                                                fontWeight: _selectedDob == null ? FontWeight.normal : FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ),
+                                          const Icon(Icons.chevron_right_rounded, color: Colors.black26),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

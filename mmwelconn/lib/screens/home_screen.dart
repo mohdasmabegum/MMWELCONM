@@ -47,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final Map<String, DateTime> _lastSeenMessageTimes = {};
   bool _isReminderDialogShowing = false;
   bool _streakChecked = false;
+  bool _birthdayWishesTriggeredToday = false;
   final List<ReminderModel> _reminderQueue = [];
 
   void _goToTab(int index) => setState(() => _selectedIndex = index);
@@ -71,6 +72,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _streakChecked = true;
                 _checkAndUpdateStreak(user);
               }
+
+              _checkAndAutoUpdateAgeGroup(user);
+              _checkAndTriggerBirthdayWishes(user);
 
               if (user.deletionScheduledAt != null) {
                 final diff = DateTime.now().difference(user.deletionScheduledAt!);
@@ -468,6 +472,174 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       'lastActiveDate': todayStr,
       'badges': updatedBadges,
     });
+  }
+
+  void _checkAndAutoUpdateAgeGroup(UserModel user) async {
+    if (user.dateOfBirth == null) return;
+
+    final now = DateTime.now();
+    int age = now.year - user.dateOfBirth!.year;
+    if (now.month < user.dateOfBirth!.month ||
+        (now.month == user.dateOfBirth!.month && now.day < user.dateOfBirth!.day)) {
+      age--;
+    }
+
+    String targetGroup = 'adult';
+    if (age < 13) {
+      targetGroup = 'kid';
+    } else if (age < 20) {
+      targetGroup = 'teen';
+    } else if (age < 55) {
+      targetGroup = 'adult';
+    } else {
+      targetGroup = 'elder';
+    }
+
+    if (user.ageGroup != targetGroup && user.ageGroup != 'professional') {
+      await _fs.updateUser(user.uid, {
+        'ageGroup': targetGroup,
+        if (targetGroup != 'kid') 'kidsModeLocked': false,
+      });
+      NotificationService().show(InAppNotification(
+        title: 'Vibe Level Up! 🚀',
+        body: 'You are now $age years old! Your theme updated to ${targetGroup.toUpperCase()} mode.',
+        type: NotifType.welcome,
+      ));
+    }
+  }
+
+  void _checkAndTriggerBirthdayWishes(UserModel user) async {
+    if (user.dateOfBirth == null || _birthdayWishesTriggeredToday) return;
+
+    final now = DateTime.now();
+    if (now.month == user.dateOfBirth!.month && now.day == user.dateOfBirth!.day) {
+      _birthdayWishesTriggeredToday = true;
+
+      int yearsJoined = now.year - user.createdAt.year;
+      if (yearsJoined < 1) yearsJoined = 1;
+
+      final ordinal = yearsJoined == 1
+          ? '1st'
+          : yearsJoined == 2
+              ? '2nd'
+              : yearsJoined == 3
+                  ? '3rd'
+                  : '${yearsJoined}th';
+      final badgeName = '$ordinal Birthday 🎂';
+
+      if (!user.badges.contains(badgeName)) {
+        final updatedBadges = List<String>.from(user.badges)..add(badgeName);
+        await _fs.updateUser(user.uid, {'badges': updatedBadges});
+      }
+
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          _showBirthdayCelebrationDialog(user, yearsJoined);
+        }
+      });
+    }
+  }
+
+  void _showBirthdayCelebrationDialog(UserModel user, int yearsJoined) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Birthday',
+      barrierColor: Colors.black.withOpacity(0.85),
+      transitionDuration: const Duration(milliseconds: 550),
+      pageBuilder: (context, anim1, anim2) {
+        final ordinal = yearsJoined == 1
+            ? '1st'
+            : yearsJoined == 2
+                ? '2nd'
+                : yearsJoined == 3
+                    ? '3rd'
+                    : '${yearsJoined}th';
+        final badgeName = '$ordinal Birthday 🎂';
+
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim1, curve: Curves.elasticOut),
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1E1B4B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(32),
+              side: const BorderSide(color: Colors.amberAccent, width: 2),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🎉🎂🎈', style: TextStyle(fontSize: 64)),
+                const SizedBox(height: 16),
+                const Text(
+                  'HAPPY BIRTHDAY!',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.amberAccent,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  user.name.toUpperCase(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Wishing you a grand celebration and a wonderful year ahead! ✨',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.amberAccent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.amberAccent.withOpacity(0.4)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.workspace_premium_rounded, color: Colors.amberAccent, size: 36),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'New Badge Earned! 🏆',
+                        style: TextStyle(color: Colors.amberAccent, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        badgeName,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    HapticFeedback.heavyImpact();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amberAccent,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  ),
+                  child: const Text('Thank you! 🥳', style: TextStyle(fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override

@@ -31,6 +31,7 @@ class UserModel {
   final String kidsBgTheme;
   final String parentId;
   final bool kidsModeLocked;
+  final DateTime? dateOfBirth;
 
   const UserModel({
     required this.uid,
@@ -63,6 +64,7 @@ class UserModel {
     this.kidsBgTheme = 'space',
     this.parentId = '',
     this.kidsModeLocked = false,
+    this.dateOfBirth,
   });
 
   factory UserModel.fromDoc(DocumentSnapshot doc) {
@@ -106,6 +108,7 @@ class UserModel {
       kidsBgTheme: d['kidsBgTheme'] ?? 'space',
       parentId: d['parentId'] ?? '',
       kidsModeLocked: d['kidsModeLocked'] ?? false,
+      dateOfBirth: d['dateOfBirth'] != null ? (d['dateOfBirth'] as Timestamp).toDate() : null,
     );
   }
 
@@ -140,6 +143,7 @@ class UserModel {
         'kidsBgTheme': kidsBgTheme,
         'parentId': parentId,
         'kidsModeLocked': kidsModeLocked,
+        'dateOfBirth': dateOfBirth != null ? Timestamp.fromDate(dateOfBirth!) : null,
       };
 
   String get profileImageUrl => profilePicture;
