@@ -9,6 +9,7 @@ import 'package:mmwelconm/screens/login_screen.dart';
 import 'package:mmwelconm/screens/register_screen.dart';
 import 'package:mmwelconm/screens/splash_screen.dart';
 import 'package:mmwelconm/services/notification_service.dart';
+import 'package:mmwelconm/widgets/app_brand.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -41,7 +42,20 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       debugShowCheckedModeBanner: false,
-      builder: (context, child) => NotificationOverlay(child: child!),
+      builder: (context, child) {
+        return ValueListenableBuilder<double>(
+          valueListenable: AppTheme.fontSizeFactor,
+          child: NotificationOverlay(child: child!),
+          builder: (context, factor, childWidget) {
+            return MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: TextScaler.linear(factor),
+              ),
+              child: childWidget!,
+            );
+          },
+        );
+      },
       routes: {
         '/': (_) => const SplashFlow(),
         '/login': (_) => const LoginScreen(),

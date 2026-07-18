@@ -18,6 +18,17 @@ class UserModel {
   final String? fcmToken;
   final String chatLockPin;
   final String chatLockPattern;
+  final String ageGroup;
+  final String customTheme;
+  final double fontSizeScale;
+  final bool highContrastEnabled;
+  final DateTime? deletionScheduledAt;
+  final int streakCount;
+  final String lastActiveDate;
+  final List<String> badges;
+  final double kidsScreenTimeLimitHours;
+  final int kidsBedtimeHour;
+  final String kidsBgTheme;
 
   const UserModel({
     required this.uid,
@@ -37,6 +48,17 @@ class UserModel {
     this.fcmToken,
     this.chatLockPin = '1234',
     this.chatLockPattern = '',
+    this.ageGroup = 'teen',
+    this.customTheme = '',
+    this.fontSizeScale = 1.0,
+    this.highContrastEnabled = false,
+    this.deletionScheduledAt,
+    this.streakCount = 0,
+    this.lastActiveDate = '',
+    this.badges = const [],
+    this.kidsScreenTimeLimitHours = 1.0,
+    this.kidsBedtimeHour = 20,
+    this.kidsBgTheme = 'space',
   });
 
   factory UserModel.fromDoc(DocumentSnapshot doc) {
@@ -65,6 +87,19 @@ class UserModel {
       fcmToken: d['fcmToken'],
       chatLockPin: d['chatLockPin'] ?? '1234',
       chatLockPattern: d['chatLockPattern'] ?? '',
+      ageGroup: d['ageGroup'] ?? 'teen',
+      customTheme: d['customTheme'] ?? '',
+      fontSizeScale: (d['fontSizeScale'] as num?)?.toDouble() ?? 1.0,
+      highContrastEnabled: d['highContrastEnabled'] ?? false,
+      deletionScheduledAt: d['deletionScheduledAt'] != null
+          ? (d['deletionScheduledAt'] as Timestamp).toDate()
+          : null,
+      streakCount: d['streakCount'] ?? 0,
+      lastActiveDate: d['lastActiveDate'] ?? '',
+      badges: List<String>.from(d['badges'] ?? []),
+      kidsScreenTimeLimitHours: (d['kidsScreenTimeLimitHours'] as num?)?.toDouble() ?? 1.0,
+      kidsBedtimeHour: d['kidsBedtimeHour'] ?? 20,
+      kidsBgTheme: d['kidsBgTheme'] ?? 'space',
     );
   }
 
@@ -86,6 +121,17 @@ class UserModel {
         'fcmToken': fcmToken,
         'chatLockPin': chatLockPin,
         'chatLockPattern': chatLockPattern,
+        'ageGroup': ageGroup,
+        'customTheme': customTheme,
+        'fontSizeScale': fontSizeScale,
+        'highContrastEnabled': highContrastEnabled,
+        'deletionScheduledAt': deletionScheduledAt != null ? Timestamp.fromDate(deletionScheduledAt!) : null,
+        'streakCount': streakCount,
+        'lastActiveDate': lastActiveDate,
+        'badges': badges,
+        'kidsScreenTimeLimitHours': kidsScreenTimeLimitHours,
+        'kidsBedtimeHour': kidsBedtimeHour,
+        'kidsBgTheme': kidsBgTheme,
       };
 
   String get profileImageUrl => profilePicture;

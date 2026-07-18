@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,29 +18,296 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- SEO Meta Tags (required for AdSense approval) -->
+  <meta name="description" content="MMWelconm – A private multi-generational social connection platform for families. Share moods, chat securely, manage health reminders, and stay close with your loved ones.">
+  <meta name="keywords" content="family app, mood sharing, social connection, kids mode, teen mode, elder companion, family chat, private social app">
+  <meta name="author" content="Asma Begum Mohd.">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph / Social Preview -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://mm-welconm.web.app/">
+  <meta property="og:title" content="MMWelconm – Connect Your Mood. Stay Close.">
+  <meta property="og:description" content="A premium private social platform for families and close circles. Age-adaptive modes for Kids, Teens, Adults, Elders, and Professionals.">
+  <meta property="og:image" content="https://mm-welconm.web.app/icons/Icon-512.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="MMWelconm – Connect Your Mood. Stay Close.">
+  <meta name="twitter:description" content="A premium private social platform for families. Kids, Teen, Adult, Elder, and Professional modes.">
+  <meta name="twitter:image" content="https://mm-welconm.web.app/icons/Icon-512.png">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="mmwelconm">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="MMWelconm">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>mmwelconm</title>
+  <title>MMWelconm – Connect Your Mood. Stay Close.</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9903300910165376"
+       crossorigin="anonymous"></script>
+
+  <!-- AdSense Ad Styles — positions ad slots around the Flutter canvas -->
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #0d0d1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    /* Top Banner Ad */
+    #ad-top {
+      width: 100%;
+      max-width: 728px;
+      min-height: 90px;
+      background: #111127;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    /* Main app container */
+    #app-wrapper {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      max-width: 1400px;
+      flex: 1;
+      min-height: calc(100vh - 90px - 100px);
+    }
+
+    /* Left sidebar ad */
+    #ad-left {
+      width: 160px;
+      min-height: 600px;
+      background: #111127;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 20px;
+      border-right: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+
+    /* Flutter app canvas — takes remaining space */
+    #flutter-target {
+      flex: 1;
+      min-height: 600px;
+      position: relative;
+    }
+
+    /* Right sidebar ad */
+    #ad-right {
+      width: 160px;
+      min-height: 600px;
+      background: #111127;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 20px;
+      border-left: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+
+    /* Bottom Banner Ad */
+    #ad-bottom {
+      width: 100%;
+      max-width: 728px;
+      min-height: 100px;
+      background: #111127;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+
+    /* Hide sidebars on mobile — keep top/bottom only */
+    @media (max-width: 900px) {
+      #ad-left, #ad-right { display: none; }
+      #app-wrapper { flex-direction: column; }
+      #flutter-target { min-height: 85vh; }
+    }
+
+    @media (max-width: 600px) {
+      #ad-top { min-height: 50px; }
+      #ad-bottom { min-height: 60px; }
+    }
+
+    /* Loading screen */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, #0d0d1a 0%, #1a0d2e 50%, #0d1a2e 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+
+    #loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loader-logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #6c63ff, #ff6584);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      margin-bottom: 24px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .loader-title {
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .loader-subtitle {
+      color: rgba(255,255,255,0.4);
+      font-size: 13px;
+      letter-spacing: 0.5px;
+      margin-bottom: 32px;
+    }
+
+    .loader-bar {
+      width: 200px;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .loader-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6c63ff, #ff6584);
+      border-radius: 2px;
+      animation: load 2s ease-in-out forwards;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(108,99,255,0.4); }
+      50% { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(108,99,255,0); }
+    }
+
+    @keyframes load {
+      0% { width: 0%; }
+      60% { width: 80%; }
+      100% { width: 100%; }
+    }
+  </style>
 </head>
 <body>
-  <!--
-    You can customize the "flutter_bootstrap.js" script.
-    This is useful to provide a custom configuration to the Flutter loader
-    or to give the user feedback during the initialization process.
 
-    For more details:
-    * https://docs.flutter.dev/platform-integration/web/initialization
+  <!-- Loading Screen (hides when Flutter is ready) -->
+  <div id="loading-screen">
+    <div class="loader-logo">🌈</div>
+    <div class="loader-title">MMWelconm</div>
+    <div class="loader-subtitle">Connect Your Mood. Stay Close.</div>
+    <div class="loader-bar">
+      <div class="loader-bar-fill"></div>
+    </div>
+  </div>
+
+  <!-- TOP BANNER AD (728x90 Leaderboard) -->
+  <div id="ad-top">
+    <ins class="adsbygoogle"
+         style="display:block; width:728px; height:90px;"
+         data-ad-client="ca-pub-9903300910165376"
+         data-ad-slot=""
+         data-ad-format="horizontal"
+         data-full-width-responsive="true">
+    </ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+
+  <!-- App + Sidebar Ads Wrapper -->
+  <div id="app-wrapper">
+
+    <!-- LEFT SIDEBAR AD (160x600 Wide Skyscraper) -->
+    <div id="ad-left">
+      <ins class="adsbygoogle"
+           style="display:block; width:160px; height:600px;"
+           data-ad-client="ca-pub-9903300910165376"
+           data-ad-slot=""
+           data-ad-format="vertical">
+      </ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+    <!-- Flutter App Canvas -->
+    <div id="flutter-target"></div>
+
+    <!-- RIGHT SIDEBAR AD (160x600 Wide Skyscraper) -->
+    <div id="ad-right">
+      <ins class="adsbygoogle"
+           style="display:block; width:160px; height:600px;"
+           data-ad-client="ca-pub-9903300910165376"
+           data-ad-slot=""
+           data-ad-format="vertical">
+      </ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM BANNER AD (728x90 Leaderboard) -->
+  <div id="ad-bottom">
+    <ins class="adsbygoogle"
+         style="display:block; width:728px; height:90px;"
+         data-ad-client="ca-pub-9903300910165376"
+         data-ad-slot=""
+         data-ad-format="horizontal"
+         data-full-width-responsive="true">
+    </ins>
+    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  </div>
+
+  <!--
+    Flutter bootstrap — renders into #flutter-target instead of full body
+    so our ad slots remain visible around the app.
   -->
+  <script>
+    // Hide loading screen once Flutter is ready
+    window.addEventListener('flutter-first-frame', function () {
+      var loadingScreen = document.getElementById('loading-screen');
+      if (loadingScreen) {
+        loadingScreen.classList.add('hidden');
+        setTimeout(function() {
+          loadingScreen.style.display = 'none';
+        }, 600);
+      }
+    });
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
+
 </body>
 </html>

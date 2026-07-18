@@ -1833,8 +1833,8 @@ class _GlowingStatusIndicatorState extends State<GlowingStatusIndicator>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat();
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
   }
 
   @override
@@ -1845,37 +1845,84 @@ class _GlowingStatusIndicatorState extends State<GlowingStatusIndicator>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final status = widget.status;
-        if (status == 'seen') {
-          return SizedBox(
-            width: 22,
-            height: 22,
-            child: CustomPaint(
-              painter: _SeenPulsarPainter(animationValue: _controller.value),
+    final status = widget.status;
+    
+    if (status == 'seen') {
+      return AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) {
+          final glowFactor = _controller.value;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF10B981), Color(0xFF059669)],
+              ),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.3 * glowFactor + 0.2),
+                  blurRadius: 4.0 * glowFactor + 2.0,
+                  spreadRadius: 0.5 * glowFactor,
+                )
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.done_all, color: Colors.white, size: 9),
+                SizedBox(width: 2),
+                Text(
+                  'READ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 7,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ],
             ),
           );
-        } else if (status == 'delivered') {
-          return SizedBox(
-            width: 14,
-            height: 14,
-            child: CustomPaint(
-              painter: _DeliveredOrbitPainter(animationValue: _controller.value),
-            ),
-          );
-        } else {
-          return SizedBox(
-            width: 14,
-            height: 14,
-            child: CustomPaint(
-              painter: _SentOrbitPainter(animationValue: _controller.value),
-            ),
-          );
-        }
-      },
-    );
+        },
+      );
+    } else if (status == 'delivered') {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.blue.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5), width: 0.8),
+        ),
+        child: const Text(
+          '● DELIVERED',
+          style: TextStyle(
+            color: Colors.blueAccent,
+            fontSize: 7,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+          ),
+        ),
+      );
+    } else {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white30, width: 0.8),
+        ),
+        child: const Text(
+          'SENT',
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: 7,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.8,
+          ),
+        ),
+      );
+    }
   }
 }
 

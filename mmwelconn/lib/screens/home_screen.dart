@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,6 +15,11 @@ import 'package:mmwelconm/screens/profile_screen.dart';
 import 'package:mmwelconm/screens/chat_detail_screen.dart';
 import 'package:mmwelconm/screens/reminders_screen.dart';
 import 'package:mmwelconm/screens/todo_screen.dart';
+import 'package:mmwelconm/screens/teen_hub_screen.dart';
+import 'package:mmwelconm/screens/adult_suite_screen.dart';
+import 'package:mmwelconm/screens/kids_playground_screen.dart';
+import 'package:mmwelconm/screens/elder_companion_screen.dart';
+import 'package:mmwelconm/screens/professional_hub_screen.dart';
 import 'package:mmwelconm/models/reminder_model.dart';
 import 'package:mmwelconm/models/contact_model.dart';
 import 'package:mmwelconm/services/firestore_service.dart';
@@ -31,6 +37,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late int _selectedIndex;
   final FirestoreService _fs = FirestoreService();
+  StreamSubscription<UserModel?>? _userSub;
+  UserModel? _userModel;
   StreamSubscription<List<ChatModel>>? _chatsSub;
   StreamSubscription<List<ReminderModel>>? _remindersSub;
   StreamSubscription<List<ContactModel>>? _contactsSub;
@@ -38,6 +46,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final Map<String, Timer> _reminderTimers = {};
   final Map<String, DateTime> _lastSeenMessageTimes = {};
   bool _isReminderDialogShowing = false;
+  bool _streakChecked = false;
   final List<ReminderModel> _reminderQueue = [];
 
   void _goToTab(int index) => setState(() => _selectedIndex = index);
@@ -49,6 +58,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
+      _userSub = _fs.watchUser(uid).listen((user) {
+        if (mounted) {
+          setState(() {
+            _userModel = user;
+            if (user != null) {
+              AppTheme.updateVibe(user.ageGroup, user.customTheme, forceHighContrast: user.highContrastEnabled);
+              AppTheme.fontSizeFactor.value = user.fontSizeScale;
+              AppTheme.highContrast.value = user.highContrastEnabled;
+
+              if (!_streakChecked) {
+                _streakChecked = true;
+                _checkAndUpdateStreak(user);
+              }
+
+              if (user.deletionScheduledAt != null) {
+                final diff = DateTime.now().difference(user.deletionScheduledAt!);
+                if (diff.inHours >= 24) {
+                  _performAccountDeletionCleanup(user.uid);
+                } else {
+                  _showRestoreAccountDialog(user);
+                }
+              }
+            }
+          });
+        }
+      });
+
       // Request/update notification permission & save FCM token
       NotificationService().requestPermissionAndSaveToken();
 
@@ -345,9 +381,99 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
+  bool _showingRestoreDialog = false;
+
+  Future<void> _performAccountDeletionCleanup(String uid) async {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+  }
+
+  void _showRestoreAccountDialog(UserModel user) {
+    if (_showingRestoreDialog) return;
+    _showingRestoreDialog = true;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore Account? 🛠️', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Your account is currently scheduled for deletion. If you continue, the scheduled deletion will be cancelled and your account will be restored.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              _showingRestoreDialog = false;
+              Navigator.pop(context);
+              await FirebaseAuth.instance.signOut();
+            },
+            child: const Text('Log out', style: TextStyle(color: Colors.red)),
+          ),
+          TextButton(
+            onPressed: () async {
+              _showingRestoreDialog = false;
+              Navigator.pop(context);
+              await _fs.updateUser(user.uid, {
+                'deletionScheduledAt': FieldValue.delete(),
+              });
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Account restored successfully! 🎉')),
+                );
+              }
+            },
+            child: const Text('Restore Account', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _checkAndUpdateStreak(UserModel user) async {
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    if (user.lastActiveDate == todayStr) return;
+
+    int newStreak = user.streakCount;
+    if (user.lastActiveDate.isNotEmpty) {
+      try {
+        final lastDate = DateTime.parse(user.lastActiveDate);
+        final difference = DateTime(now.year, now.month, now.day).difference(DateTime(lastDate.year, lastDate.month, lastDate.day)).inDays;
+        if (difference == 1) {
+          newStreak++;
+        } else if (difference > 1) {
+          newStreak = 1;
+        }
+      } catch (_) {
+        newStreak = 1;
+      }
+    } else {
+      newStreak = 1;
+    }
+
+    final updatedBadges = List<String>.from(user.badges);
+    if (newStreak >= 5 && !updatedBadges.contains('Mood Master 🏆')) {
+      updatedBadges.add('Mood Master 🏆');
+    }
+    if (newStreak >= 3 && !updatedBadges.contains('Happy Kid 🌟')) {
+      updatedBadges.add('Happy Kid 🌟');
+    }
+    if (!updatedBadges.contains('Good Friend 🤝')) {
+      updatedBadges.add('Good Friend 🤝');
+    }
+
+    await _fs.updateUser(user.uid, {
+      'streakCount': newStreak,
+      'lastActiveDate': todayStr,
+      'badges': updatedBadges,
+    });
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _userSub?.cancel();
     _chatsSub?.cancel();
     _remindersSub?.cancel();
     _contactsSub?.cancel();
@@ -378,11 +504,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final ageGroup = _userModel?.ageGroup ?? 'teen';
+
     final pages = [
-      _HomePage(onGoToChats: () => _goToTab(1), onGoToContacts: () => _goToTab(4)),
+      _HomePage(onGoToChats: () => _goToTab(1), onGoToContacts: () => _goToTab(5)),
       const ChatsScreen(),
       const RemindersScreen(),
       const TodoScreen(),
+      if (ageGroup == 'teen')
+        const TeenHubScreen()
+      else if (ageGroup == 'kid')
+        const KidsPlaygroundScreen()
+      else if (ageGroup == 'elder')
+        const ElderCompanionScreen()
+      else if (ageGroup == 'professional')
+        const ProfessionalHubScreen()
+      else
+        const AdultSuiteScreen(),
       const ConnectionsScreen(),
       const SettingsScreen(),
     ];
@@ -393,31 +531,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           Positioned.fill(
             child: Padding(
               padding: const EdgeInsets.only(left: 88),
-              child: pages[_selectedIndex],
+              child: pages[_selectedIndex < pages.length ? _selectedIndex : 0],
             ),
           ),
           Positioned(
             left: 12,
-            top: MediaQuery.of(context).size.height * 0.1,
-            bottom: MediaQuery.of(context).size.height * 0.1,
-            child: _buildSideNav(),
+            top: MediaQuery.of(context).size.height * 0.05,
+            bottom: MediaQuery.of(context).size.height * 0.05,
+            child: _buildSideNav(ageGroup),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSideNav() {
+  Widget _buildSideNav(String ageGroup) {
     final tabs = [
       {'icon': Icons.home_rounded, 'label': 'Home'},
       {'icon': Icons.chat_rounded, 'label': 'Chats'},
       {'icon': Icons.calendar_today_rounded, 'label': 'Schedules'},
       {'icon': Icons.checklist_rtl_rounded, 'label': 'Tasks'},
+      if (ageGroup == 'teen')
+        {'icon': Icons.bolt_rounded, 'label': 'Teen Hub'}
+      else if (ageGroup == 'kid')
+        {'icon': Icons.bubble_chart_rounded, 'label': 'Playground'}
+      else if (ageGroup == 'elder')
+        {'icon': Icons.health_and_safety_rounded, 'label': 'Companion'}
+      else
+        {'icon': Icons.business_center_rounded, 'label': 'Adult Suite'},
       {'icon': Icons.people_alt_rounded, 'label': 'Contacts'},
       {'icon': Icons.settings_rounded, 'label': 'Settings'},
     ];
 
-    const double itemHeight = 72.0;
+    const double itemHeight = 64.0;
     const double paddingOffset = 16.0;
 
     return Container(
@@ -446,7 +592,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             left: 6,
             right: 6,
             top: paddingOffset + (_selectedIndex * itemHeight) + 4,
-            height: 64,
+            height: 56,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
@@ -493,15 +639,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             color: isSelected
                                 ? Colors.white
                                 : Colors.white.withValues(alpha: 0.45),
-                            size: 24,
+                            size: 22,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Text(
                           item['label'] as String,
                           maxLines: 1,
                           style: TextStyle(
-                            fontSize: 8,
+                            fontSize: 7.5,
                             fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
                             color: isSelected
                                 ? Colors.white
@@ -599,6 +745,8 @@ class _HomePageState extends State<_HomePage> {
                           onStatusChanged: _setStatus,
                         ),
                         const SizedBox(height: 26),
+                        _VibeSwitcherBanner(userModel: _userModel, fs: _fs),
+                        const SizedBox(height: 26),
                         _QuickActions(
                           onStartChat: widget.onGoToChats,
                           onOpenMood: _showMoodSheet,
@@ -632,7 +780,7 @@ class _HomePageState extends State<_HomePage> {
                               '© ${DateTime.now().year} MMWelconm by MRA',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: AppTheme.ink.withValues(alpha: 0.65),
+                                color: AppTheme.vibe.textColor.withValues(alpha: 0.65),
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 1.2,
                               ),
@@ -652,6 +800,103 @@ class _HomePageState extends State<_HomePage> {
   }
 }
 
+class _VibeSwitcherBanner extends StatelessWidget {
+  final UserModel? userModel;
+  final FirestoreService fs;
+
+  const _VibeSwitcherBanner({required this.userModel, required this.fs});
+
+  @override
+  Widget build(BuildContext context) {
+    if (userModel == null) return const SizedBox();
+    final activeGroup = userModel!.ageGroup;
+    final vibe = AppTheme.vibe;
+
+    return HoverCard(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          color: vibe.cardColor,
+          border: Border.all(color: vibe.borderColor.withValues(alpha: 0.35)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.palette_rounded, color: vibe.primaryColor, size: 24),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Experience Multi-Generational Vibes! 🎨',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: vibe.textColor),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Select an age group below to adapt backgrounds, styling, legibility scales, and custom hubs.',
+                        style: TextStyle(fontSize: 11, color: vibe.textColor.withValues(alpha: 0.65)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildVibeChip('Kids 🧸', 'kid', 'bubblegum', activeGroup, vibe),
+                _buildVibeChip('Teens ⚡', 'teen', 'neon', activeGroup, vibe),
+                _buildVibeChip('Adults 💼', 'adult', 'slate', activeGroup, vibe),
+                _buildVibeChip('Elders 👵', 'elder', 'cream', activeGroup, vibe),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVibeChip(String label, String groupKey, String defaultTheme, String activeGroup, VibeTheme vibe) {
+    final active = activeGroup == groupKey;
+    return GestureDetector(
+      onTap: () async {
+        await fs.updateUser(userModel!.uid, {
+          'ageGroup': groupKey,
+          'customTheme': defaultTheme,
+          'fontSizeScale': groupKey == 'elder' ? 1.4 : 1.0,
+          'highContrastEnabled': false,
+        });
+        AppTheme.updateVibe(groupKey, defaultTheme);
+        AppTheme.fontSizeFactor.value = groupKey == 'elder' ? 1.4 : 1.0;
+        AppTheme.highContrast.value = false;
+        HapticFeedback.mediumImpact();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: active ? vibe.primaryColor : vibe.textColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: active ? vibe.primaryColor : vibe.borderColor.withValues(alpha: 0.1)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: active ? (vibe.isDark && vibe.primaryColor == const Color(0xFFFCEE09) ? Colors.black : Colors.white) : vibe.textColor.withValues(alpha: 0.8),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Top hero ──────────────────────────────────────────────────────────────────
 
 class _TopHero extends StatelessWidget {
@@ -664,13 +909,14 @@ class _TopHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isOnline = userModel?.showOnline ?? true;
+    final vibe = AppTheme.vibe;
     return HoverCard(
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(34),
-          color: Colors.white.withValues(alpha: 0.68),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.72)),
+          color: vibe.cardColor,
+          border: Border.all(color: vibe.borderColor.withValues(alpha: 0.35)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,7 +949,7 @@ class _TopHero extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: isOnline ? Colors.green : Colors.grey,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: vibe.isDark ? Colors.black : Colors.white, width: 2),
                           ),
                         ),
                       ),
@@ -718,14 +964,14 @@ class _TopHero extends StatelessWidget {
                           'MMWELCONM',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w900,
-                                color: AppTheme.ink,
+                                color: vibe.textColor,
                               ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'A calm social space for mood, chat, and connection.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.ink.withValues(alpha: 0.66),
+                                color: vibe.textColor.withValues(alpha: 0.7),
                               ),
                         ),
                         const SizedBox(height: 6),
@@ -735,14 +981,14 @@ class _TopHero extends StatelessWidget {
                             Text(
                               'MM ID: ',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppTheme.ink.withValues(alpha: 0.58),
+                                    color: vibe.textColor.withValues(alpha: 0.6),
                                     fontWeight: FontWeight.w700,
                                   ),
                             ),
                             Text(
                               userModel?.mmId ?? '...',
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppTheme.violet,
+                                    color: vibe.primaryColor,
                                     fontWeight: FontWeight.w800,
                                   ),
                             ),
@@ -755,10 +1001,10 @@ class _TopHero extends StatelessWidget {
                                     const SnackBar(content: Text('MM ID copied to clipboard!')),
                                   );
                                 },
-                                child: const Icon(
+                                child: Icon(
                                   Icons.copy_rounded,
                                   size: 14,
-                                  color: AppTheme.violet,
+                                  color: vibe.primaryColor,
                                 ),
                               ),
                             ]
@@ -778,14 +1024,14 @@ class _TopHero extends StatelessWidget {
                     'Welcome back, $displayName 👋',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.ink,
+                          color: vibe.textColor,
                         ),
                   ),
                 ),
                 Switch.adaptive(
                   value: isOnline,
                   onChanged: onStatusChanged,
-                  activeColor: AppTheme.violet,
+                  activeColor: vibe.primaryColor,
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -824,7 +1070,7 @@ class _TopHero extends StatelessWidget {
             Text(
               'Everything feels smoother from here. Send a mood, start a conversation, or invite someone new.',
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.ink.withValues(alpha: 0.68),
+                    color: vibe.textColor.withValues(alpha: 0.7),
                     height: 1.45,
                   ),
             ),
@@ -850,6 +1096,7 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final vibe = AppTheme.vibe;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 700),
       child: Column(
@@ -858,7 +1105,7 @@ class _QuickActions extends StatelessWidget {
           Text('Quick Actions',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppTheme.ink,
+                    color: vibe.textColor,
                   )),
           const SizedBox(height: 14),
           Row(
@@ -938,7 +1185,7 @@ class _ActionCard extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color: AppTheme.ink.withValues(alpha: 0.75))),
+                    color: AppTheme.vibe.textColor.withValues(alpha: 0.75))),
           ],
         ),
       ),
@@ -1010,6 +1257,58 @@ class _MoodSheetState extends State<_MoodSheet> {
         SnackBar(content: Text('Failed to share mood: $e')),
       );
     }
+  }
+
+  void _detectMoodAI() {
+    final note = _noteCtrl.text.toLowerCase();
+    if (note.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please type some text first so the AI can analyze it! 🤖')),
+      );
+      return;
+    }
+
+    String detectedEmoji = '😌';
+    String detectedLabel = 'Calm';
+
+    final happyKeywords = ['happy', 'glad', 'awesome', 'great', 'good', 'love', 'perfect', 'smile', 'blessed', 'fun', 'joy'];
+    final sadKeywords = ['sad', 'down', 'blue', 'hurt', 'unhappy', 'cry', 'lonely', 'miss', 'bad', 'sorry'];
+    final angryKeywords = ['angry', 'mad', 'frustrated', 'annoyed', 'hate', 'stupid', 'shut up', 'crazy'];
+    final tiredKeywords = ['tired', 'sleepy', 'exhausted', 'sleep', 'bed', 'zzz', 'lazy'];
+    final excitedKeywords = ['excited', 'woohoo', 'party', 'celebrate', 'hype', 'yes', 'yay'];
+    final anxiousKeywords = ['anxious', 'scared', 'worry', 'afraid', 'stressed', 'nervous'];
+
+    if (happyKeywords.any((k) => note.contains(k))) {
+      detectedEmoji = '😊';
+      detectedLabel = 'Happy';
+    } else if (sadKeywords.any((k) => note.contains(k))) {
+      detectedEmoji = '😔';
+      detectedLabel = 'Sad';
+    } else if (angryKeywords.any((k) => note.contains(k))) {
+      detectedEmoji = '😤';
+      detectedLabel = 'Frustrated';
+    } else if (excitedKeywords.any((k) => note.contains(k))) {
+      detectedEmoji = '🥳';
+      detectedLabel = 'Excited';
+    } else if (tiredKeywords.any((k) => note.contains(k))) {
+      detectedEmoji = '😴';
+      detectedLabel = 'Tired';
+    } else if (anxiousKeywords.any((k) => note.contains(k))) {
+      detectedEmoji = '😰';
+      detectedLabel = 'Anxious';
+    }
+
+    setState(() {
+      _selectedEmoji = detectedEmoji;
+      _selectedLabel = detectedLabel;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('AI Vibe detected: $detectedEmoji $detectedLabel! 🤖✨'),
+        backgroundColor: AppTheme.violet,
+      ),
+    );
   }
 
   @override
@@ -1092,6 +1391,11 @@ class _MoodSheetState extends State<_MoodSheet> {
               maxLines: 2,
               decoration: InputDecoration(
                 hintText: 'Add a note (optional)...',
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.psychology, color: AppTheme.violet),
+                  tooltip: 'AI Detect Mood',
+                  onPressed: _detectMoodAI,
+                ),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.9),
                 border: OutlineInputBorder(

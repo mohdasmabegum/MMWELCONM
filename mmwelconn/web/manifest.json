@@ -1,13 +1,15 @@
 {
-    "name": "mmwelconm",
-    "short_name": "mmwelconm",
+    "name": "MMWelconm – Connect Your Mood. Stay Close.",
+    "short_name": "MMWelconm",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0d0d1a",
+    "theme_color": "#6c63ff",
+    "description": "A premium private social connection platform for families and close circles. Age-adaptive modes for Kids, Teens, Adults, Elders, and Professionals.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "categories": ["social", "lifestyle", "communication"],
+    "lang": "en",
     "icons": [
         {
             "src": "icons/Icon-192.png",

@@ -3,6 +3,179 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+class VibeTheme {
+  final bool isDark;
+  final List<Color> backgroundGradient;
+  final List<Color> blobColors;
+  final Color textColor;
+  final Color subtitleColor;
+  final Color cardColor;
+  final Color borderColor;
+  final Color primaryColor;
+  final Color accentColor;
+
+  const VibeTheme({
+    required this.isDark,
+    required this.backgroundGradient,
+    required this.blobColors,
+    required this.textColor,
+    required this.subtitleColor,
+    required this.cardColor,
+    required this.borderColor,
+    required this.primaryColor,
+    required this.accentColor,
+  });
+
+  static VibeTheme get(String ageGroup, String customTheme) {
+    if (ageGroup == 'teen') {
+      if (customTheme == 'cyberpunk') {
+        return const VibeTheme(
+          isDark: true,
+          backgroundGradient: [Color(0xFF0A0A0E), Color(0xFF14141F), Color(0xFF0A0A0E)],
+          blobColors: [Color(0x33FCEE09), Color(0x3300FF66), Color(0x33E60067), Color(0x1100F0FF)],
+          textColor: Colors.white,
+          subtitleColor: Colors.white70,
+          cardColor: Color(0x331E1E2E),
+          borderColor: Color(0x55FCEE09),
+          primaryColor: Color(0xFFFCEE09),
+          accentColor: Color(0xFF00FF66),
+        );
+      } else if (customTheme == 'pastel') {
+        return const VibeTheme(
+          isDark: false,
+          backgroundGradient: [Color(0xFFFFF4F8), Color(0xFFF3EFFF), Color(0xFFE8F5FF)],
+          blobColors: [Color(0x44FFB6C1), Color(0x44B0E0E6), Color(0x44E6E6FA), Color(0x22FFF0F5)],
+          textColor: Color(0xFF191B2C),
+          subtitleColor: Colors.black54,
+          cardColor: Color(0xBCFFFFFF),
+          borderColor: Color(0x44FF6F91),
+          primaryColor: Color(0xFFFF6F91),
+          accentColor: Color(0xFF9B6DFF),
+        );
+      } else {
+        // 'neon' or default
+        return const VibeTheme(
+          isDark: true,
+          backgroundGradient: [Color(0xFF0C0A1A), Color(0xFF160D2D), Color(0xFF0A0714)],
+          blobColors: [Color(0x44FF007F), Color(0x4400F0FF), Color(0x448A2BE2), Color(0x22FF8A65)],
+          textColor: Colors.white,
+          subtitleColor: Colors.white70,
+          cardColor: Color(0x3F2B1F4D),
+          borderColor: Color(0x559B6DFF),
+          primaryColor: Color(0xFF9B6DFF),
+          accentColor: Color(0xFFFF6F91),
+        );
+      }
+    } else if (ageGroup == 'kid') {
+      if (customTheme == 'forest') {
+        return const VibeTheme(
+          isDark: false,
+          backgroundGradient: [Color(0xFFE8F5E9), Color(0xFFFFF3E0), Color(0xFFE8F5E9)],
+          blobColors: [Color(0x4481C784), Color(0x44FFF176), Color(0x44FFB74D), Color(0x22C8E6C9)],
+          textColor: Color(0xFF2E7D32),
+          subtitleColor: Colors.black54,
+          cardColor: Color(0xBCFFFFFF),
+          borderColor: Color(0x5581C784),
+          primaryColor: Color(0xFF4CAF50),
+          accentColor: Color(0xFFFF9800),
+        );
+      } else {
+        // 'bubblegum' or default
+        return const VibeTheme(
+          isDark: false,
+          backgroundGradient: [Color(0xFFFFF0F5), Color(0xFFE6F2FF), Color(0xFFFFF5FD)],
+          blobColors: [Color(0x55FFA6C9), Color(0x55B3E5FC), Color(0x55FFE0B2), Color(0x22F8BBD0)],
+          textColor: Color(0xFFC2185B),
+          subtitleColor: Colors.black54,
+          cardColor: Color(0xBCFFFFFF),
+          borderColor: Color(0x55FFA6C9),
+          primaryColor: Color(0xFFFF4081),
+          accentColor: Color(0xFF00E5FF),
+        );
+      }
+    } else if (ageGroup == 'elder') {
+      if (customTheme == 'high_contrast_dark') {
+        return const VibeTheme(
+          isDark: true,
+          backgroundGradient: [Color(0xFF000000), Color(0xFF121212), Color(0xFF000000)],
+          blobColors: [Color(0x33FCEE09), Color(0x3300F0FF), Color(0x22FFFFFF), Color(0x11FCEE09)],
+          textColor: Colors.white,
+          subtitleColor: Color(0xFFFCEE09),
+          cardColor: Color(0xFF121212),
+          borderColor: Color(0xFFFCEE09),
+          primaryColor: Color(0xFFFCEE09),
+          accentColor: Colors.white,
+        );
+      } else if (customTheme == 'parchment') {
+        return const VibeTheme(
+          isDark: false,
+          backgroundGradient: [Color(0xFFF5E6D3), Color(0xFFEAD5C3), Color(0xFFF5E6D3)],
+          blobColors: [Color(0x44BCAAA4), Color(0x44B0BEC5), Color(0x33D7CCC8), Color(0x22EAD5C3)],
+          textColor: Color(0xFF3E2723),
+          subtitleColor: Colors.black87,
+          cardColor: Color(0xBCFFFFFF),
+          borderColor: Color(0x55BCAAA4),
+          primaryColor: Color(0xFF8D6E63),
+          accentColor: Color(0xFF78909C),
+        );
+      } else {
+        // 'cream' or default
+        return const VibeTheme(
+          isDark: false,
+          backgroundGradient: [Color(0xFFFCF8F2), Color(0xFFF9F3EB), Color(0xFFFCF8F2)],
+          blobColors: [Color(0x44D7CCC8), Color(0x44FFE0B2), Color(0x44CFD8DC), Color(0x22F5F5F5)],
+          textColor: Color(0xFF263238),
+          subtitleColor: Colors.black54,
+          cardColor: Color(0xBCFFFFFF),
+          borderColor: Color(0x55D7CCC8),
+          primaryColor: Color(0xFF795548),
+          accentColor: Color(0xFF607D8B),
+        );
+      }
+    } else {
+      // adult
+      if (customTheme == 'navy_sage') {
+        return const VibeTheme(
+          isDark: true,
+          backgroundGradient: [Color(0xFF080D1D), Color(0xFF0F1B35), Color(0xFF080D1D)],
+          blobColors: [Color(0x338E9B90), Color(0x333D5A80), Color(0x33293241), Color(0x118E9B90)],
+          textColor: Colors.white,
+          subtitleColor: Colors.white70,
+          cardColor: Color(0x331C2541),
+          borderColor: Color(0x448E9B90),
+          primaryColor: Color(0xFF8E9B90),
+          accentColor: Color(0xFF3D5A80),
+        );
+      } else if (customTheme == 'warm_onyx') {
+        return const VibeTheme(
+          isDark: true,
+          backgroundGradient: [Color(0xFF121212), Color(0xFF1F1F1F), Color(0xFF121212)],
+          blobColors: [Color(0x33D4AF37), Color(0x338B5A2B), Color(0x33FFBF00), Color(0x11D4AF37)],
+          textColor: Colors.white,
+          subtitleColor: Colors.white70,
+          cardColor: Color(0x332A2A2A),
+          borderColor: Color(0x44D4AF37),
+          primaryColor: Color(0xFFD4AF37),
+          accentColor: Color(0xFFFFBF00),
+        );
+      } else {
+        // 'slate' or default
+        return const VibeTheme(
+          isDark: false,
+          backgroundGradient: [Color(0xFFF2F5FA), Color(0xFFE6ECF4), Color(0xFFEEF2F7)],
+          blobColors: [Color(0x334A6984), Color(0x338F94A8), Color(0x335C7E9C), Color(0x114A6984)],
+          textColor: Color(0xFF191B2C),
+          subtitleColor: Colors.black54,
+          cardColor: Color(0xBCFFFFFF),
+          borderColor: Color(0x444A6984),
+          primaryColor: Color(0xFF4A6984),
+          accentColor: Color(0xFF8F94A8),
+        );
+      }
+    }
+  }
+}
+
 class AppTheme {
   static const Color ink = Color(0xFF191B2C);
   static const Color midnight = Color(0xFF101426);
@@ -10,6 +183,20 @@ class AppTheme {
   static const Color pink = Color(0xFFFF6F91);
   static const Color coral = Color(0xFFFF8A65);
   static const Color sky = Color(0xFF57A8FF);
+
+  static final ValueNotifier<VibeTheme> vibeThemeNotifier = ValueNotifier<VibeTheme>(
+    VibeTheme.get('teen', 'neon'),
+  );
+
+  static final ValueNotifier<double> fontSizeFactor = ValueNotifier<double>(1.0);
+  static final ValueNotifier<bool> highContrast = ValueNotifier<bool>(false);
+
+  static VibeTheme get vibe => vibeThemeNotifier.value;
+
+  static void updateVibe(String ageGroup, String customTheme, {bool forceHighContrast = false}) {
+    final theme = (forceHighContrast && ageGroup == 'elder') ? 'high_contrast_dark' : customTheme;
+    vibeThemeNotifier.value = VibeTheme.get(ageGroup, theme);
+  }
 }
 
 class SoftGlowBackground extends StatelessWidget {
@@ -19,40 +206,45 @@ class SoftGlowBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFF9FBFF), Color(0xFFF4F0FF), Color(0xFFFFF2F5)],
-        ),
-      ),
-      child: Stack(
-        children: [
-          const _GlowBlob(
-            alignment: Alignment(-0.95, -0.92),
-            size: 240,
-            colors: [Color(0x3357A8FF), Color(0x0057A8FF)],
+    return ValueListenableBuilder<VibeTheme>(
+      valueListenable: AppTheme.vibeThemeNotifier,
+      builder: (context, vibe, _) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: vibe.backgroundGradient,
+            ),
           ),
-          const _GlowBlob(
-            alignment: Alignment(0.95, -0.85),
-            size: 300,
-            colors: [Color(0x33FF6F91), Color(0x00FF6F91)],
+          child: Stack(
+            children: [
+              _GlowBlob(
+                alignment: const Alignment(-0.95, -0.92),
+                size: 240,
+                colors: [vibe.blobColors[0], vibe.blobColors[0].withValues(alpha: 0)],
+              ),
+              _GlowBlob(
+                alignment: const Alignment(0.95, -0.85),
+                size: 300,
+                colors: [vibe.blobColors[1], vibe.blobColors[1].withValues(alpha: 0)],
+              ),
+              _GlowBlob(
+                alignment: const Alignment(-0.8, 0.95),
+                size: 260,
+                colors: [vibe.blobColors[2], vibe.blobColors[2].withValues(alpha: 0)],
+              ),
+              _GlowBlob(
+                alignment: const Alignment(0.95, 0.9),
+                size: 220,
+                colors: [vibe.blobColors[3], vibe.blobColors[3].withValues(alpha: 0)],
+              ),
+              Container(color: vibe.isDark ? Colors.black.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.18)),
+              child,
+            ],
           ),
-          const _GlowBlob(
-            alignment: Alignment(-0.8, 0.95),
-            size: 260,
-            colors: [Color(0x229B6DFF), Color(0x009B6DFF)],
-          ),
-          const _GlowBlob(
-            alignment: Alignment(0.95, 0.9),
-            size: 220,
-            colors: [Color(0x22FF8A65), Color(0x00FF8A65)],
-          ),
-          Container(color: Colors.white.withValues(alpha: 0.18)),
-          child,
-        ],
-      ),
+        );
+      },
     );
   }
 }

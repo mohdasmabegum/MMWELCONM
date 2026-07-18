@@ -121,6 +121,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  void _confirmAccountDeletion(String uid) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Schedule Deletion? ⚠️', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text(
+          'Are you sure you want to delete your account? It will take 24 hours to completely remove your profile from the cloud. You can log back in within 24 hours to cancel this process.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _fs.updateUser(uid, {
+                'deletionScheduledAt': Timestamp.fromDate(DateTime.now()),
+              });
+              await _auth.logout();
+              if (mounted) {
+                Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+              }
+            },
+            child: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -140,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           'Settings',
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.normal,
-                                color: AppTheme.ink,
+                                color: AppTheme.vibe.textColor,
                               ),
                         ),
                         const SizedBox(height: 16),
@@ -163,7 +194,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               padding: const EdgeInsets.all(20),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(28),
-                                color: Colors.white.withValues(alpha: 0.72),
+                                color: AppTheme.vibe.cardColor,
+                                border: Border.all(color: AppTheme.vibe.borderColor.withValues(alpha: 0.35)),
                               ),
                               child: Row(
                                 children: [
@@ -172,14 +204,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     backgroundImage: (user?.profilePicture != null && user!.profilePicture.isNotEmpty)
                                         ? NetworkImage(user.profilePicture)
                                         : null,
-                                    backgroundColor: AppTheme.violet.withValues(alpha: 0.18),
+                                    backgroundColor: AppTheme.vibe.primaryColor.withValues(alpha: 0.18),
                                     child: (user?.profilePicture == null || user!.profilePicture.isEmpty)
                                         ? Text(
                                             (user?.name != null && user!.name.isNotEmpty)
                                                 ? user.name[0].toUpperCase()
                                                 : '?',
-                                            style: const TextStyle(
-                                              color: AppTheme.violet,
+                                            style: TextStyle(
+                                              color: AppTheme.vibe.primaryColor,
                                               fontWeight: FontWeight.w800,
                                               fontSize: 28,
                                             ),
@@ -195,14 +227,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                           user?.name ?? 'Account',
                                           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                                                 fontWeight: FontWeight.w800,
-                                                color: AppTheme.ink,
+                                                color: AppTheme.vibe.textColor,
                                               ),
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           user?.email ?? '',
                                           style: TextStyle(
-                                            color: AppTheme.ink.withValues(alpha: 0.6),
+                                            color: AppTheme.vibe.textColor.withValues(alpha: 0.7),
                                           ),
                                         ),
                                         const SizedBox(height: 4),
@@ -212,14 +244,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             Text(
                                               'MM ID: ',
                                               style: TextStyle(
-                                                color: AppTheme.ink.withValues(alpha: 0.7),
+                                                color: AppTheme.vibe.textColor.withValues(alpha: 0.6),
                                                 fontWeight: FontWeight.w700,
                                               ),
                                             ),
                                             Text(
                                               user?.mmId ?? '',
-                                              style: const TextStyle(
-                                                color: AppTheme.violet,
+                                              style: TextStyle(
+                                                color: AppTheme.vibe.primaryColor,
                                                 fontWeight: FontWeight.w800,
                                               ),
                                             ),
@@ -241,6 +273,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             ]
                                           ],
                                         ),
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          children: [
+                                            Text('🔥 Streak: ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.vibe.textColor)),
+                                            Text('${user?.streakCount ?? 0} Days', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange, fontSize: 13)),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+                                        if (user?.badges != null && user!.badges.isNotEmpty) ...[
+                                          Text('🏆 Badges:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.vibe.textColor.withValues(alpha: 0.6))),
+                                          const SizedBox(height: 4),
+                                          Wrap(
+                                            spacing: 6,
+                                            runSpacing: 4,
+                                            children: user!.badges.map((b) => Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.vibe.primaryColor.withValues(alpha: 0.1),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(b, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.vibe.textColor)),
+                                            )).toList(),
+                                          )
+                                        ],
                                       ],
                                     ),
                                   ),
@@ -286,6 +342,174 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 );
                               },
                             ),
+                            ListTile(
+                              leading: const Icon(Icons.delete_forever, color: Colors.red),
+                              title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                              subtitle: const Text('Schedule account for deletion in 24 hours'),
+                              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.red),
+                              onTap: () {
+                                _confirmAccountDeletion(uid);
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        _SettingsSection(
+                          title: 'Vibe & Themes',
+                          children: [
+                            ListTile(
+                              leading: Icon(
+                                (user?.ageGroup ?? 'teen') == 'teen'
+                                    ? Icons.bolt_rounded
+                                    : (user?.ageGroup == 'kid'
+                                        ? Icons.bubble_chart_rounded
+                                        : (user?.ageGroup == 'elder'
+                                            ? Icons.health_and_safety_rounded
+                                            : (user?.ageGroup == 'professional'
+                                                ? Icons.business_center_rounded
+                                                : Icons.badge_rounded))),
+                                color: AppTheme.vibe.primaryColor,
+                              ),
+                              title: const Text('Age Group Vibe'),
+                              subtitle: Text(
+                                (user?.ageGroup ?? 'teen') == 'teen'
+                                    ? 'Teens (13-19) - Neon & Focus'
+                                    : (user?.ageGroup == 'kid'
+                                        ? 'Kids (5-12) - Playful & Safe'
+                                        : (user?.ageGroup == 'elder'
+                                            ? 'Elders (55+) - Large & Clear'
+                                            : (user?.ageGroup == 'professional'
+                                                ? 'Professional Mode - Neat & Admin'
+                                                : 'Adults (20-55) - Work & Family'))),
+                              ),
+                              trailing: DropdownButton<String>(
+                                value: user?.ageGroup ?? 'teen',
+                                underline: const SizedBox(),
+                                dropdownColor: Colors.white,
+                                style: const TextStyle(color: AppTheme.ink, fontWeight: FontWeight.bold, fontSize: 13),
+                                items: const [
+                                  DropdownMenuItem(value: 'kid', child: Text('Kids (5-12)')),
+                                  DropdownMenuItem(value: 'teen', child: Text('Teens (13-19)')),
+                                  DropdownMenuItem(value: 'adult', child: Text('Adults (20-55)')),
+                                  DropdownMenuItem(value: 'elder', child: Text('Elders (55+)')),
+                                  DropdownMenuItem(value: 'professional', child: Text('Professional')),
+                                ],
+                                onChanged: uid == null
+                                    ? null
+                                    : (val) async {
+                                        if (val != null) {
+                                          final defaultTheme = val == 'kid'
+                                              ? 'bubblegum'
+                                              : (val == 'teen'
+                                                  ? 'neon'
+                                                  : (val == 'elder' ? 'cream' : 'slate'));
+                                          await _fs.updateUser(uid, {
+                                            'ageGroup': val,
+                                            'customTheme': defaultTheme,
+                                            if (val == 'elder') 'fontSizeScale': 1.4 else 'fontSizeScale': 1.0,
+                                            if (val == 'elder') 'highContrastEnabled': false,
+                                          });
+                                          AppTheme.updateVibe(val, defaultTheme);
+                                          AppTheme.fontSizeFactor.value = val == 'elder' ? 1.4 : 1.0;
+                                          AppTheme.highContrast.value = false;
+                                          HapticFeedback.mediumImpact();
+                                        }
+                                      },
+                              ),
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.palette_outlined, color: AppTheme.pink),
+                              title: const Text('Sub-Theme Color'),
+                              subtitle: Text('Current: ${(user?.customTheme != null && user!.customTheme.isNotEmpty) ? user.customTheme.toUpperCase() : "DEFAULT"}'),
+                              trailing: DropdownButton<String>(
+                                value: (user?.customTheme != null && user!.customTheme.isNotEmpty)
+                                    ? user.customTheme
+                                    : ((user?.ageGroup ?? 'teen') == 'teen'
+                                        ? 'neon'
+                                        : ((user?.ageGroup ?? 'teen') == 'kid'
+                                            ? 'bubblegum'
+                                            : ((user?.ageGroup ?? 'teen') == 'elder' ? 'cream' : 'slate'))),
+                                underline: const SizedBox(),
+                                dropdownColor: Colors.white,
+                                style: const TextStyle(color: AppTheme.ink, fontWeight: FontWeight.bold, fontSize: 13),
+                                items: (user?.ageGroup ?? 'teen') == 'teen'
+                                    ? const [
+                                        DropdownMenuItem(value: 'neon', child: Text('Neon Dream')),
+                                        DropdownMenuItem(value: 'cyberpunk', child: Text('Cyberpunk')),
+                                        DropdownMenuItem(value: 'pastel', child: Text('Pastel Cloud')),
+                                      ]
+                                    : ((user?.ageGroup ?? 'teen') == 'kid'
+                                        ? const [
+                                            DropdownMenuItem(value: 'bubblegum', child: Text('Bubblegum Pink')),
+                                            DropdownMenuItem(value: 'forest', child: Text('Forest Green')),
+                                          ]
+                                        : ((user?.ageGroup ?? 'teen') == 'elder'
+                                            ? const [
+                                                DropdownMenuItem(value: 'cream', child: Text('Classic Cream')),
+                                                DropdownMenuItem(value: 'high_contrast_dark', child: Text('High Contrast')),
+                                                DropdownMenuItem(value: 'parchment', child: Text('Parchment Paper')),
+                                              ]
+                                            : const [
+                                                DropdownMenuItem(value: 'slate', child: Text('Slate Professional')),
+                                                DropdownMenuItem(value: 'navy_sage', child: Text('Navy & Sage')),
+                                                DropdownMenuItem(value: 'warm_onyx', child: Text('Warm Onyx')),
+                                              ])),
+                                onChanged: uid == null
+                                    ? null
+                                    : (val) async {
+                                        if (val != null) {
+                                          final isHighContrast = val == 'high_contrast_dark';
+                                          await _fs.updateUser(uid, {
+                                            'customTheme': val,
+                                            if (user?.ageGroup == 'elder') 'highContrastEnabled': isHighContrast,
+                                          });
+                                          AppTheme.updateVibe(user?.ageGroup ?? 'teen', val, forceHighContrast: isHighContrast);
+                                          AppTheme.highContrast.value = isHighContrast;
+                                          HapticFeedback.mediumImpact();
+                                        }
+                                      },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Divider(),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Text Size Scale: ${(AppTheme.fontSizeFactor.value * 100).toInt()}%',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.ink),
+                                  ),
+                                  Slider.adaptive(
+                                    value: user?.fontSizeScale ?? 1.0,
+                                    min: 1.0,
+                                    max: 2.2,
+                                    divisions: 6,
+                                    activeColor: AppTheme.vibe.primaryColor,
+                                    onChanged: (v) async {
+                                      AppTheme.fontSizeFactor.value = v;
+                                      await _fs.updateUser(uid!, {'fontSizeScale': v});
+                                    },
+                                  ),
+                                  if ((user?.ageGroup ?? 'teen') == 'elder')
+                                    SwitchListTile(
+                                      title: const Text('High Contrast Screen', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.ink)),
+                                      value: user?.highContrastEnabled ?? false,
+                                      activeColor: AppTheme.vibe.primaryColor,
+                                      onChanged: (v) async {
+                                        AppTheme.highContrast.value = v;
+                                        final targetTheme = v ? 'high_contrast_dark' : 'cream';
+                                        await _fs.updateUser(uid!, {
+                                          'highContrastEnabled': v,
+                                          'customTheme': targetTheme,
+                                        });
+                                        AppTheme.updateVibe('elder', targetTheme, forceHighContrast: v);
+                                      },
+                                    )
+                                ],
+                              ),
+                            )
                           ],
                         ),
                         const SizedBox(height: 18),
@@ -370,7 +594,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Text(
                                 '© ${DateTime.now().year} MMWelconm by MRA',
                                 style: TextStyle(
-                                  color: AppTheme.ink.withValues(alpha: 0.65),
+                                  color: AppTheme.vibe.textColor.withValues(alpha: 0.65),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 1.2,
