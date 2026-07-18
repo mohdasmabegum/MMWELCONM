@@ -77,6 +77,11 @@ class FirestoreService {
     required String recipientPhotoUrl,
     required RelationshipType relationship,
   }) async {
+    final senderDoc = await getUser(senderUid);
+    final isKid = senderDoc?.ageGroup == 'kid';
+    final hasParent = senderDoc?.parentId != null && senderDoc!.parentId.isNotEmpty;
+    final statusVal = (isKid && hasParent) ? 'pending_parent' : ContactStatus.pending.name;
+
     final batch = _db.batch();
     final now = FieldValue.serverTimestamp();
 
@@ -88,7 +93,7 @@ class FirestoreService {
         'contactMmId': recipientMmId,
         'contactName': recipientName,
         'contactPhotoUrl': recipientPhotoUrl,
-        'status': ContactStatus.pending.name,
+        'status': statusVal,
         'direction': ContactDirection.outgoing.name,
         'relationshipType': relationship.name,
         'addedAt': now,
@@ -103,7 +108,7 @@ class FirestoreService {
         'contactMmId': senderMmId,
         'contactName': senderName,
         'contactPhotoUrl': senderPhotoUrl,
-        'status': ContactStatus.pending.name,
+        'status': statusVal,
         'direction': ContactDirection.incoming.name,
         'relationshipType': relationship.name,
         'addedAt': now,
@@ -154,6 +159,19 @@ class FirestoreService {
       _db.collection('users').doc(contactUid).collection('contacts').doc(ownerUid),
     );
     return batch.commit();
+  }
+
+  Future<void> approveChildOutgoingRequest(String childUid, String contactUid) async {
+    final batch = _db.batch();
+    batch.update(
+      _db.collection('users').doc(childUid).collection('contacts').doc(contactUid),
+      {'status': ContactStatus.pending.name},
+    );
+    batch.update(
+      _db.collection('users').doc(contactUid).collection('contacts').doc(childUid),
+      {'status': ContactStatus.pending.name},
+    );
+    await batch.commit();
   }
 
   Future<void> cancelContactRequest(String ownerUid, String contactUid) {

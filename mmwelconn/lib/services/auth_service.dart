@@ -86,7 +86,7 @@ class AuthService {
 
   // Sign up — creates Firestore doc while still authenticated, then signs out
   // so AuthGate does not redirect to HomeScreen before the dialog is dismissed.
-  Future<User?> signUp(String email, String password, String name) async {
+  Future<User?> signUp(String email, String password, String name, {String ageGroup = 'teen'}) async {
     final result = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
@@ -101,6 +101,7 @@ class AuthService {
         email: email,
         createdAt: DateTime.now(),
         lastActive: DateTime.now(),
+        ageGroup: ageGroup,
       ));
       await _auth.signOut();
       // Trigger welcome notification after successful registration

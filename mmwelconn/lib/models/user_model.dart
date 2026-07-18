@@ -29,6 +29,8 @@ class UserModel {
   final double kidsScreenTimeLimitHours;
   final int kidsBedtimeHour;
   final String kidsBgTheme;
+  final String parentId;
+  final bool kidsModeLocked;
 
   const UserModel({
     required this.uid,
@@ -59,6 +61,8 @@ class UserModel {
     this.kidsScreenTimeLimitHours = 1.0,
     this.kidsBedtimeHour = 20,
     this.kidsBgTheme = 'space',
+    this.parentId = '',
+    this.kidsModeLocked = false,
   });
 
   factory UserModel.fromDoc(DocumentSnapshot doc) {
@@ -100,6 +104,8 @@ class UserModel {
       kidsScreenTimeLimitHours: (d['kidsScreenTimeLimitHours'] as num?)?.toDouble() ?? 1.0,
       kidsBedtimeHour: d['kidsBedtimeHour'] ?? 20,
       kidsBgTheme: d['kidsBgTheme'] ?? 'space',
+      parentId: d['parentId'] ?? '',
+      kidsModeLocked: d['kidsModeLocked'] ?? false,
     );
   }
 
@@ -132,6 +138,8 @@ class UserModel {
         'kidsScreenTimeLimitHours': kidsScreenTimeLimitHours,
         'kidsBedtimeHour': kidsBedtimeHour,
         'kidsBgTheme': kidsBgTheme,
+        'parentId': parentId,
+        'kidsModeLocked': kidsModeLocked,
       };
 
   String get profileImageUrl => profilePicture;

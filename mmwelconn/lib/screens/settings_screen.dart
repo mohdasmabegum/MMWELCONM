@@ -152,6 +152,334 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _linkParent(String uid, String parentMmId) async {
+    final parentMmIdClean = parentMmId.trim().toUpperCase();
+    if (parentMmIdClean.isEmpty) return;
+
+    final snap = await FirebaseFirestore.instance
+        .collection('users')
+        .where('mmId', isEqualTo: parentMmIdClean)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Parent MM ID not found!')),
+        );
+      }
+      return;
+    }
+
+    final parentDoc = snap.docs.first;
+    if (parentDoc.id == uid) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('You cannot link to your own account!')),
+        );
+      }
+      return;
+    }
+
+    await _fs.updateUser(uid, {'parentId': parentDoc.id});
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Linked to Parent successfully! 🎉')),
+      );
+    }
+  }
+
+  Future<void> _unlinkParent(String uid) async {
+    await _fs.updateUser(uid, {
+      'parentId': '',
+      'kidsModeLocked': false,
+    });
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unlinked from Parent.')),
+      );
+    }
+  }
+
+  void _showLinkParentDialog(String childUid) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Link Parent Account 🔗', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Enter your parent\'s MM ID below to link accounts:'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.characters,
+              decoration: const InputDecoration(
+                hintText: 'e.g. MM123456',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final mmId = ctrl.text.trim();
+              Navigator.pop(context);
+              await _linkParent(childUid, mmId);
+            },
+            child: const Text('Link Account', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _manageChildrenSheet(String parentUid) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    '👶 Managed Child Accounts',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.ink),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'View and configure linked kids account settings including limits and safety locks.',
+                    style: TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('users')
+                          .where('parentId', isEqualTo: parentUid)
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        final docs = snapshot.data?.docs ?? [];
+                        if (docs.isEmpty) {
+                          return const Center(
+                            child: Text(
+                              'No children linked yet.\nHave your child enter your MM ID in their settings.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.black38, fontSize: 13),
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          itemCount: docs.length,
+                          separatorBuilder: (_, __) => const Divider(),
+                          itemBuilder: (context, index) {
+                            final childDoc = docs[index];
+                            final childData = childDoc.data() as Map<String, dynamic>;
+                            final childUid = childDoc.id;
+                            final childName = childData['name'] ?? 'Child';
+                            final childMmId = childData['mmId'] ?? '';
+                            final double limitHours = (childData['kidsScreenTimeLimitHours'] as num?)?.toDouble() ?? 1.0;
+                            final int bedtime = childData['kidsBedtimeHour'] ?? 20;
+                            final bool isLocked = childData['kidsModeLocked'] ?? false;
+                            final childMood = childData['currentMoodId'] ?? 'N/A';
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.blue.shade100,
+                                    child: const Text('👶'),
+                                  ),
+                                  title: Text(childName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  subtitle: Text('MM ID: $childMmId | Mood: $childMood'),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.link_off_rounded, color: Colors.red),
+                                    onPressed: () async {
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(childUid)
+                                          .update({'parentId': '', 'kidsModeLocked': false});
+                                    },
+                                  ),
+                                ),
+                                SwitchListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  title: const Text('Lock settings for this child', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  subtitle: const Text('Prevents child from changing their mode or settings.', style: TextStyle(fontSize: 10)),
+                                  value: isLocked,
+                                  onChanged: (val) async {
+                                    await FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(childUid)
+                                        .update({'kidsModeLocked': val});
+                                    setSheetState(() {});
+                                  },
+                                ),
+                                const SizedBox(height: 8),
+                                Text('Screen Time Limit: ${limitHours} hours', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                Slider(
+                                  value: limitHours,
+                                  min: 0.5,
+                                  max: 4.0,
+                                  divisions: 7,
+                                  onChanged: (val) async {
+                                    await FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(childUid)
+                                        .update({'kidsScreenTimeLimitHours': val});
+                                    setSheetState(() {});
+                                  },
+                                ),
+                                Text(
+                                  'Bedtime Lock: ${bedtime % 12 == 0 ? 12 : bedtime % 12} ${bedtime >= 12 ? 'PM' : 'AM'}',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                                Slider(
+                                  value: bedtime.toDouble(),
+                                  min: 17, // 5 PM
+                                  max: 23, // 11 PM
+                                  divisions: 6,
+                                  onChanged: (val) async {
+                                    await FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(childUid)
+                                        .update({'kidsBedtimeHour': val.toInt()});
+                                    setSheetState(() {});
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                const Text('Pending Friend Requests:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(childUid)
+                                      .collection('contacts')
+                                      .where('status', isEqualTo: 'pending')
+                                      .where('direction', isEqualTo: 'incoming')
+                                      .snapshots(),
+                                  builder: (context, contactsSnap) {
+                                    final reqs = contactsSnap.data?.docs ?? [];
+                                    if (reqs.isEmpty) {
+                                      return const Text('No pending requests for this child.', style: TextStyle(fontSize: 10, color: Colors.black38));
+                                    }
+                                    return Column(
+                                      children: reqs.map((rDoc) {
+                                        final rData = rDoc.data() as Map<String, dynamic>;
+                                        final contactUid = rDoc.id;
+                                        final contactName = rData['contactName'] ?? 'Someone';
+                                        return ListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          dense: true,
+                                          title: Text(contactName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                          subtitle: const Text('Wants to connect with child', style: TextStyle(fontSize: 10)),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                                onPressed: () async {
+                                                  await _fs.acceptContact(childUid, contactUid);
+                                                },
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                                                onPressed: () async {
+                                                  await _fs.declineContact(childUid, contactUid);
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                const Text('Child Sent Requests Pending Approval:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 4),
+                                StreamBuilder<QuerySnapshot>(
+                                  stream: FirebaseFirestore.instance
+                                      .collection('users')
+                                      .doc(childUid)
+                                      .collection('contacts')
+                                      .where('status', isEqualTo: 'pending_parent')
+                                      .where('direction', isEqualTo: 'outgoing')
+                                      .snapshots(),
+                                  builder: (context, contactsSnap) {
+                                    final reqs = contactsSnap.data?.docs ?? [];
+                                    if (reqs.isEmpty) {
+                                      return const Text('No outgoing requests waiting for approval.', style: TextStyle(fontSize: 10, color: Colors.black38));
+                                    }
+                                    return Column(
+                                      children: reqs.map((rDoc) {
+                                        final rData = rDoc.data() as Map<String, dynamic>;
+                                        final contactUid = rDoc.id;
+                                        final contactName = rData['contactName'] ?? 'Someone';
+                                        return ListTile(
+                                          contentPadding: EdgeInsets.zero,
+                                          dense: true,
+                                          title: Text(contactName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                          subtitle: const Text('Child wants to connect', style: TextStyle(fontSize: 10)),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              IconButton(
+                                                icon: const Icon(Icons.check_circle, color: Colors.green, size: 20),
+                                                onPressed: () async {
+                                                  await _fs.approveChildOutgoingRequest(childUid, contactUid);
+                                                },
+                                              ),
+                                              IconButton(
+                                                icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                                                onPressed: () async {
+                                                  await _fs.declineContact(childUid, contactUid);
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    );
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -342,6 +670,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 );
                               },
                             ),
+                            if ((user?.ageGroup ?? 'teen') == 'kid') ...[
+                              ListTile(
+                                leading: const Icon(Icons.supervisor_account_rounded, color: Colors.blue),
+                                title: const Text('Parent Link'),
+                                subtitle: Text(user!.parentId.isNotEmpty ? 'Linked to parent account' : 'Link parent using MM ID'),
+                                trailing: user.kidsModeLocked
+                                    ? const Icon(Icons.lock, color: Colors.orange, size: 18)
+                                    : (user.parentId.isNotEmpty ? const Icon(Icons.link_off, color: Colors.red) : const Icon(Icons.link)),
+                                onTap: user.kidsModeLocked
+                                    ? null
+                                    : () {
+                                        if (user.parentId.isNotEmpty) {
+                                          _unlinkParent(uid!);
+                                        } else {
+                                          _showLinkParentDialog(uid!);
+                                        }
+                                      },
+                              ),
+                            ],
+                            if ((user?.ageGroup ?? 'teen') == 'adult') ...[
+                              ListTile(
+                                leading: const Icon(Icons.child_care_rounded, color: Colors.purple),
+                                title: const Text('Manage Kids Accounts'),
+                                subtitle: const Text('Configure limits and settings for child accounts'),
+                                trailing: const Icon(Icons.chevron_right_rounded),
+                                onTap: () => _manageChildrenSheet(uid!),
+                              ),
+                            ],
                             ListTile(
                               leading: const Icon(Icons.delete_forever, color: Colors.red),
                               title: const Text('Delete Account', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
@@ -372,15 +728,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               title: const Text('Age Group Vibe'),
                               subtitle: Text(
-                                (user?.ageGroup ?? 'teen') == 'teen'
-                                    ? 'Teens (13-19) - Neon & Focus'
-                                    : (user?.ageGroup == 'kid'
-                                        ? 'Kids (5-12) - Playful & Safe'
-                                        : (user?.ageGroup == 'elder'
-                                            ? 'Elders (55+) - Large & Clear'
-                                            : (user?.ageGroup == 'professional'
-                                                ? 'Professional Mode - Neat & Admin'
-                                                : 'Adults (20-55) - Work & Family'))),
+                                (user?.kidsModeLocked ?? false)
+                                    ? 'Locked by Parent 🔒'
+                                    : ((user?.ageGroup ?? 'teen') == 'teen'
+                                        ? 'Teens (13-19) - Neon & Focus'
+                                        : (user?.ageGroup == 'kid'
+                                            ? 'Kids (5-12) - Playful & Safe'
+                                            : (user?.ageGroup == 'elder'
+                                                ? 'Elders (55+) - Large & Clear'
+                                                : (user?.ageGroup == 'professional'
+                                                    ? 'Professional Mode - Neat & Admin'
+                                                    : 'Adults (20-55) - Work & Family')))),
                               ),
                               trailing: DropdownButton<String>(
                                 value: user?.ageGroup ?? 'teen',
@@ -394,7 +752,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   DropdownMenuItem(value: 'elder', child: Text('Elders (55+)')),
                                   DropdownMenuItem(value: 'professional', child: Text('Professional')),
                                 ],
-                                onChanged: uid == null
+                                onChanged: (uid == null || (user?.kidsModeLocked ?? false))
                                     ? null
                                     : (val) async {
                                         if (val != null) {

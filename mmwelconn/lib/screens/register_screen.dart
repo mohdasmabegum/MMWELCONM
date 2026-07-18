@@ -20,6 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
   bool _loading = false;
+  String _selectedAgeGroup = 'adult';
 
   @override
   void initState() {
@@ -52,6 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
       _emailController.text.trim(),
       _passwordController.text,
       _nameController.text.trim(),
+      ageGroup: _selectedAgeGroup,
     );
     if (!mounted) return;
     setState(() => _loading = false);
@@ -72,6 +74,97 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
         },
       );
     }
+  }
+
+  Widget _buildModeSelector() {
+    final List<Map<String, dynamic>> groups = [
+      {'id': 'kid', 'label': 'Kid', 'sub': 'Age 5-12', 'icon': Icons.child_care_rounded, 'color': Colors.blue},
+      {'id': 'teen', 'label': 'Teen', 'sub': 'Age 13-19', 'icon': Icons.bolt_rounded, 'color': Colors.purple},
+      {'id': 'adult', 'label': 'Adult', 'sub': 'Age 20-55', 'icon': Icons.person_rounded, 'color': Colors.pink},
+      {'id': 'elder', 'label': 'Elder', 'sub': 'Age 55+', 'icon': Icons.elderly_rounded, 'color': Colors.teal},
+      {'id': 'professional', 'label': 'Professional', 'sub': 'Work Hub', 'icon': Icons.business_center_rounded, 'color': Colors.indigo},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'Select App Mode',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+          ),
+        ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 2.2,
+          ),
+          itemCount: groups.length,
+          itemBuilder: (context, index) {
+            final group = groups[index];
+            final id = group['id'] as String;
+            final label = group['label'] as String;
+            final sub = group['sub'] as String;
+            final icon = group['icon'] as IconData;
+            final color = group['color'] as Color;
+            final isSelected = _selectedAgeGroup == id;
+
+            return GestureDetector(
+              onTap: () {
+                setState(() => _selectedAgeGroup = id);
+                HapticFeedback.lightImpact();
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isSelected ? color.withOpacity(0.12) : Colors.white.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isSelected ? color : Colors.black12,
+                    width: isSelected ? 2 : 1,
+                  ),
+                  boxShadow: isSelected
+                      ? [BoxShadow(color: color.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 4))]
+                      : [],
+                ),
+                child: Row(
+                  children: [
+                    Icon(icon, color: isSelected ? color : Colors.black54, size: 24),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected ? color : Colors.black87,
+                            ),
+                          ),
+                          Text(
+                            sub,
+                            style: const TextStyle(fontSize: 10, color: Colors.black45),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 
   @override
@@ -147,6 +240,8 @@ class _RegisterScreenState extends State<RegisterScreen> with SingleTickerProvid
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 20),
+                            _buildModeSelector(),
                             const SizedBox(height: 22),
                             HoverActionButton(
                               label: _loading ? 'Creating...' : 'Register',
